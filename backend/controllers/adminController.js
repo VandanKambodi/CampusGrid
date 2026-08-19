@@ -173,11 +173,33 @@ const directChangePassword = async (req, res) => {
     }
 };
 
+// @desc    Delete a student user account
+// @route   DELETE /api/hub/admin/users/:id
+// @access  Private/Admin
+const deleteStudent = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (user.role === 'admin') {
+            return res.status(400).json({ message: 'Cannot remove an admin account' });
+        }
+
+        await user.deleteOne();
+        res.json({ message: 'Student account removed successfully' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     requestAccountCreation,
     requestPasswordReset,
     getPendingRequests,
     processRequest,
     directCreateStudent,
-    directChangePassword
+    directChangePassword,
+    deleteStudent
 };

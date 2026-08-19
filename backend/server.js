@@ -26,6 +26,16 @@ app.use('/api/posts', require('./routes/postRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/hub', require('./routes/hubRoutes'));
 
+// Global error handler (handles Multer file limit errors)
+app.use((err, req, res, next) => {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ message: 'File size exceeds maximum limit of 10MB.' });
+    }
+    if (err) {
+        return res.status(err.status || 500).json({ message: err.message || 'An unexpected error occurred' });
+    }
+    next();
+});
 
 const PORT = process.env.PORT || 5000;
 

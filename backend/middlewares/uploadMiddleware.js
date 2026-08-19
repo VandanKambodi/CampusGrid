@@ -24,9 +24,13 @@ if (isCloudinaryConfigured) {
 
     storage = new CloudinaryStorage({
         cloudinary: cloudinary,
-        params: {
-            folder: 'campusgrid',
-            allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx']
+        params: async (req, file) => {
+            const ext = path.extname(file.originalname).toLowerCase();
+            const isDoc = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.txt'].includes(ext) || (file.mimetype && file.mimetype.includes('pdf'));
+            return {
+                folder: 'campusgrid',
+                resource_type: isDoc ? 'raw' : 'auto'
+            };
         }
     });
 } else {
@@ -45,6 +49,11 @@ if (isCloudinaryConfigured) {
     });
 }
 
-const upload = multer({ storage });
+const upload = multer({ 
+    storage,
+    limits: { 
+        fileSize: 10 * 1024 * 1024 // 10MB Universal File Size Limit
+    }
+});
 
 module.exports = upload;
