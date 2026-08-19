@@ -1,338 +1,222 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Code, FolderGit2, X, Loader2, Plus, Sparkles } from 'lucide-react';
 import axios from 'axios';
 import Loader from '../components/Loader';
-import PostCard from '../components/PostCard';
-import ConfirmModal from '../components/ConfirmModal';
-import { User, Edit3, BookOpen, Code, Sparkles, X } from 'lucide-react';
 
 function Profile() {
-  const [profileData, setProfileData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [deletePostId, setDeletePostId] = useState(null);
-
-  // Form fields
-  const [name, setName] = useState('');
-  const [course, setCourse] = useState('');
-  const [branch, setBranch] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const [techStackInput, setTechStackInput] = useState('');
-  const [profilePicture, setProfilePicture] = useState('');
-
-  const token = localStorage.getItem('token');
-
-  const fetchProfile = async () => {
-    setLoading(true);
-    try {
-      const { data } = await axios.get(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/users/profile`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setProfileData(data);
-      setName(data.name || '');
-      setCourse(data.course || '');
-      setBranch(data.branch || '');
-      setTechStackInput(Array.isArray(data.techStack) ? data.techStack.join(', ') : '');
-      setProfilePicture(data.profilePicture || '');
-    } catch (err) {
-      console.error('Failed to load profile', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [projects, setProjects] = useState([]);
 
   useEffect(() => {
     fetchProfile();
   }, []);
 
-  const handleUpdateProfile = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    setError('');
-
-    const techStackArray = techStackInput
-      .split(',')
-      .map(s => s.trim())
-      .filter(Boolean);
-
+  const fetchProfile = async () => {
     try {
-      const { data } = await axios.put(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/users/profile`,
-        {
-          name,
-          course,
-          branch,
-          techStack: techStackArray,
-          profilePicture
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const token = localStorage.getItem('token');
+      const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/profile`, { headers: { Authorization: `Bearer ${token}` } });
+      setProfile(data);
+      setTechStackInput(data.techStack?.join(', ') || '');
+      setProjects(data.projects || []);
+    } catch (error) { 
+      console.error("Error fetching profile:", error); 
+    }
+  };
 
-      // Update localStorage userInfo name if needed
-      const localUserInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-      localStorage.setItem('userInfo', JSON.stringify({ ...localUserInfo, name: data.name, profilePicture: data.profilePicture }));
-      window.dispatchEvent(new Event('auth-change'));
-
+  const handleUpdateProfile = async () => {
+    setIsSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      const techStackArray = techStackInput.split(',').map(item => item.trim()).filter(Boolean);
+      const { data } = await axios.put(`${import.meta.env.VITE_API_URL}/api/users/profile`, { techStack: techStackArray, projects }, { headers: { Authorization: `Bearer ${token}` } });
+      setProfile(prev => ({ ...prev, ...data }));
       setIsEditing(false);
-      fetchProfile();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update profile');
-    } finally {
-      setSaving(false);
+    } catch { 
+      alert("Error updating profile"); 
+    } finally { 
+      setIsSaving(false); 
     }
   };
 
-  const handleLike = async (postId) => {
-    try {
-      await axios.put(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/posts/${postId}/like`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      fetchProfile();
-    } catch (err) {
-      console.error(err);
-    }
+  const addProject = () => setProjects([...projects, { title: '', description: '', link: '' }]);
+  const updateProject = (index, field, value) => { 
+    const updated = [...projects]; 
+    updated[index][field] = value; 
+    setProjects(updated); 
   };
 
-  const handleComment = async (postId, text) => {
-    try {
-      await axios.post(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/posts/${postId}/comment`,
-        { text },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      fetchProfile();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  if (loading) return <Loader text="Loading Profile..." />;
-  if (!profileData) return <div className="text-center py-12 text-gray-500">Failed to load profile details.</div>;
-
-  const executeDeletePost = async () => {
-    if (!deletePostId) return;
-    try {
-      await axios.delete(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/posts/${deletePostId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setDeletePostId(null);
-      fetchProfile();
-    } catch (err) {
-      console.error('Delete post error', err);
-    }
-  };
+  if (!profile) return <Loader text="Loading personal profile..." />;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      
-      {/* Profile Header Card */}
-      <div className="bg-white dark:bg-[#111112] border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm relative overflow-hidden">
-        <div className="h-28 bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-500 -m-6 mb-6 opacity-90" />
-
-        <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between gap-4 mb-6">
-          <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 text-center sm:text-left">
-            <div className="w-24 h-24 shrink-0 rounded-full border-4 border-white dark:border-[#111112] overflow-hidden shadow-lg bg-indigo-600 flex items-center justify-center -mt-16 sm:-mt-16 z-10">
-              <img 
-                src={profileData.profilePicture && profileData.profilePicture.trim() !== '' ? profileData.profilePicture : `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.name || profileData.rollNo || 'Admin')}&background=6366f1&color=fff&bold=true`} 
-                alt={profileData.name || profileData.rollNo} 
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="pt-2 sm:pt-0">
-              <h1 className="text-2xl font-black text-gray-900 dark:text-white flex items-center justify-center sm:justify-start gap-2">
-                {profileData.name || profileData.rollNo || 'Student'}
-                {profileData.role === 'admin' && (
-                  <span className="bg-purple-100 text-purple-600 dark:bg-purple-500/20 dark:text-purple-300 text-[10px] px-2 py-0.5 rounded font-extrabold uppercase tracking-wider">
-                    Admin
-                  </span>
-                )}
-              </h1>
-              <p className="text-xs font-mono text-gray-500 dark:text-gray-400 mt-0.5">
-                {profileData.rollNo} • {profileData.branch || 'CSE'} ({profileData.course || 'B.Tech'})
-              </p>
-            </div>
-          </div>
-
-          <button 
-            onClick={() => setIsEditing(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer"
-          >
-            <Edit3 className="w-3.5 h-3.5" /> Edit Profile
-          </button>
-        </div>
-
-        {/* Profile Stats Bar */}
-        <div className="grid grid-cols-3 gap-3 bg-gray-50 dark:bg-white/5 rounded-xl p-3 border border-gray-100 dark:border-white/5 text-center">
+    <div className="w-full space-y-6">
+      <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-md p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <img 
+            src={profile.profilePicture || "https://img.freepik.com/premium-vector/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-vector-illustration_561158-3485.jpg"} 
+            alt="Profile" 
+            className="w-16 h-16 md:w-20 md:h-20 rounded-full border border-gray-200 dark:border-white/10 object-cover bg-gray-200 shadow-sm shrink-0" 
+          />
           <div>
-            <span className="block text-lg font-black text-gray-900 dark:text-white">{profileData.posts?.length || 0}</span>
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Posts</span>
-          </div>
-          <div className="border-x border-gray-200 dark:border-white/10">
-            <span className="block text-lg font-black text-gray-900 dark:text-white">{profileData.followers?.length || 0}</span>
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Followers</span>
-          </div>
-          <div>
-            <span className="block text-lg font-black text-gray-900 dark:text-white">{profileData.following?.length || 0}</span>
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Following</span>
+            <h1 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white mb-1">{profile.name}</h1>
+            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
+              <span>Roll No: {profile.rollNo}</span>
+              <span>•</span>
+              <span>{profile.course || "B.Tech"} {profile.branch || "CSE"}</span>
+            </p>
           </div>
         </div>
-
-        {/* Tech Stack & Bio */}
-        {profileData.techStack?.length > 0 && (
-          <div className="mt-5 pt-4 border-t border-gray-100 dark:border-white/5">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Code className="w-3.5 h-3.5 text-indigo-500" /> Tech Stack & Skills
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {profileData.techStack.map((tech, idx) => (
-                <span 
-                  key={idx}
-                  className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 text-xs font-semibold rounded-md border border-indigo-100 dark:border-indigo-500/20"
-                >
-                  {tech}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+        <button 
+          onClick={() => isEditing ? handleUpdateProfile() : setIsEditing(true)} 
+          disabled={isSaving} 
+          className={`px-5 py-2.5 rounded-sm cursor-pointer text-xs font-black transition-all shadow-sm flex items-center justify-center gap-1.5 shrink-0 ${
+            isEditing 
+              ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
+              : 'bg-gray-900 text-white hover:bg-indigo-600 dark:bg-white dark:text-black dark:hover:bg-indigo-400 dark:hover:text-white'
+          }`}
+        >
+          {isSaving ? <><Loader2 className="w-3.5 h-3.5 animate-spin"/> Saving Changes...</> : isEditing ? 'Save Profile' : 'Edit Profile'}
+        </button>
       </div>
 
-      {/* Edit Profile Modal */}
-      {isEditing && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white dark:bg-[#151516] border border-gray-200 dark:border-white/10 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-white/10">
-              <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-indigo-500" /> Edit Profile Details
-              </h3>
-              <button onClick={() => setIsEditing(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {error && (
-              <div className="p-3 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-xs rounded-lg border border-red-200">
-                {error}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          {/* Tech Stack */}
+          <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-md p-6 shadow-sm">
+            <h3 className="text-xs font-black mb-4 flex items-center gap-2 text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+              <Code className="w-4 h-4" /> Technical Stack
+            </h3>
+            {isEditing ? (
+              <textarea 
+                value={techStackInput} 
+                onChange={(e) => setTechStackInput(e.target.value)} 
+                placeholder="React, Node.js, Express, MongoDB, Tailwind..." 
+                className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 dark:text-white rounded-sm p-3 text-xs font-semibold outline-none focus:border-indigo-500 transition-colors" 
+                rows="3" 
+              />
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {profile.techStack?.length > 0 ? (
+                  profile.techStack.map((tech, i) => (
+                    <span key={i} className="px-3 py-1.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-sm text-xs font-extrabold text-gray-800 dark:text-gray-200">
+                      {tech}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-gray-400 italic text-xs">No technical skills added yet. Click edit to customize.</span>
+                )}
               </div>
             )}
+          </div>
 
-            <form onSubmit={handleUpdateProfile} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Full Name</label>
-                <input 
-                  type="text" 
-                  value={name} 
-                  onChange={(e) => setName(e.target.value)} 
-                  className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3.5 py-2 text-sm text-gray-900 dark:text-white outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Course</label>
-                  <input 
-                    type="text" 
-                    value={course} 
-                    onChange={(e) => setCourse(e.target.value)} 
-                    placeholder="e.g. B.Tech"
-                    className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3.5 py-2 text-sm text-gray-900 dark:text-white outline-none focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Branch</label>
-                  <input 
-                    type="text" 
-                    value={branch} 
-                    onChange={(e) => setBranch(e.target.value)} 
-                    placeholder="e.g. CSE, ECE"
-                    className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3.5 py-2 text-sm text-gray-900 dark:text-white outline-none focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
-                  Tech Stack (Comma-separated)
-                </label>
-                <input 
-                  type="text" 
-                  value={techStackInput} 
-                  onChange={(e) => setTechStackInput(e.target.value)} 
-                  placeholder="e.g. React, Node.js, Python, Tailwind"
-                  className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3.5 py-2 text-sm text-gray-900 dark:text-white outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Profile Image URL</label>
-                <input 
-                  type="text" 
-                  value={profilePicture} 
-                  onChange={(e) => setProfilePicture(e.target.value)} 
-                  placeholder="https://..."
-                  className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3.5 py-2 text-sm text-gray-900 dark:text-white outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-white/10">
+          {/* Projects */}
+          <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-md p-6 shadow-sm">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xs font-black flex items-center gap-2 text-cyan-600 dark:text-cyan-400 uppercase tracking-wider">
+                <FolderGit2 className="w-4 h-4" /> Engineering Projects
+              </h3>
+              {isEditing && (
                 <button 
-                  type="button" 
-                  onClick={() => setIsEditing(false)}
-                  className="px-4 py-2 bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-bold"
+                  onClick={addProject} 
+                  type="button"
+                  className="text-xs text-cyan-600 dark:text-cyan-400 font-black hover:underline flex items-center gap-1"
                 >
-                  Cancel
+                  <Plus className="w-3.5 h-3.5" /> Add Project
                 </button>
-                <button 
-                  type="submit" 
-                  disabled={saving}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm"
-                >
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              {isEditing ? (
+                projects.map((proj, i) => (
+                  <div key={i} className="bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-white/10 p-4 rounded-md space-y-2.5 relative">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Project #{i+1}</span>
+                      <button onClick={() => setProjects(projects.filter((_, idx) => idx !== i))} type="button" className="text-red-500 hover:text-red-700">
+                        <X className="w-4 h-4"/>
+                      </button>
+                    </div>
+                    <input 
+                      type="text" 
+                      placeholder="Project Title" 
+                      value={proj.title} 
+                      onChange={(e) => updateProject(i, 'title', e.target.value)} 
+                      className="w-full bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 dark:text-white rounded-sm px-3 py-2 text-xs font-bold outline-none focus:border-indigo-500" 
+                    />
+                    <input 
+                      type="text" 
+                      placeholder="Brief Description" 
+                      value={proj.description} 
+                      onChange={(e) => updateProject(i, 'description', e.target.value)} 
+                      className="w-full bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 dark:text-white rounded-sm px-3 py-2 text-xs font-medium outline-none focus:border-indigo-500" 
+                    />
+                    <input 
+                      type="url" 
+                      placeholder="GitHub or Live URL (https://...)" 
+                      value={proj.link} 
+                      onChange={(e) => updateProject(i, 'link', e.target.value)} 
+                      className="w-full bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-sm px-3 py-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 outline-none focus:border-indigo-500" 
+                    />
+                  </div>
+                ))
+              ) : (
+                profile.projects?.length > 0 ? (
+                  profile.projects.map((proj, i) => (
+                    <div key={i} className="bg-gray-50 dark:bg-white/5 border border-gray-200/80 dark:border-white/10 p-4 rounded-sm">
+                      <h4 className="font-extrabold text-sm text-gray-900 dark:text-white">{proj.title}</h4>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 my-1.5 leading-relaxed">{proj.description}</p>
+                      {proj.link && (
+                        <a 
+                          href={proj.link} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="text-[11px] uppercase font-black text-indigo-600 dark:text-indigo-400 hover:underline break-all inline-block mt-1"
+                        >
+                          View Repository →
+                        </a>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <span className="text-gray-400 italic text-xs">No project showcases listed.</span>
+                )
+              )}
+            </div>
           </div>
         </div>
-      )}
 
-      {/* User's Created Posts */}
-      <div className="space-y-4">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-indigo-500" /> My Campus Posts ({profileData.posts?.length || 0})
-        </h2>
-
-        {profileData.posts?.length === 0 ? (
-          <div className="text-center py-10 bg-white dark:bg-[#111112] border border-gray-200 dark:border-white/10 rounded-xl">
-            <p className="text-xs text-gray-500 dark:text-gray-400">You haven't posted anything on CampusGrid yet.</p>
+        {/* Activity Timeline */}
+        <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-md p-6 shadow-sm h-fit">
+          <h3 className="text-xs font-black mb-5 flex items-center gap-2 uppercase tracking-wider text-gray-900 dark:text-gray-100">
+            <Sparkles className="w-4 h-4 text-amber-500" /> Recent Campus Activity
+          </h3>
+          
+          <div className="space-y-4">
+            {profile.posts?.length > 0 ? (
+              profile.posts.map(post => (
+                <div key={post._id} className="p-4 rounded-sm bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 px-2 py-0.5 mb-1 rounded-sm">
+                      {post.type}
+                    </span>
+                    <span className="text-[11px] font-semibold text-gray-400">
+                      {new Date(post.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <h4 className="font-extrabold text-sm leading-tight mb-1 text-gray-900 dark:text-white">{post.title}</h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 leading-relaxed">{post.content}</p>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-xs font-semibold text-gray-400 italic border border-dashed border-gray-200 dark:border-white/10 rounded-sm">
+                No published posts recorded yet.
+              </div>
+            )}
           </div>
-        ) : (
-          profileData.posts?.map(post => (
-            <PostCard 
-              key={post._id} 
-              post={{ ...post, author: profileData }}
-              currentUserId={profileData._id}
-              currentUser={profileData}
-              onLike={handleLike}
-              onComment={handleComment}
-              onDelete={(id) => setDeletePostId(id)}
-            />
-          ))
-        )}
+        </div>
       </div>
-
-      <ConfirmModal 
-        isOpen={!!deletePostId}
-        onClose={() => setDeletePostId(null)}
-        onConfirm={executeDeletePost}
-        title="Delete Post"
-        message="Are you sure you want to delete this post? This action cannot be undone."
-        confirmText="Delete Post"
-      />
-
     </div>
   );
 }

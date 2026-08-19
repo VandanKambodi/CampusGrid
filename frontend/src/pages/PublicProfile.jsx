@@ -1,215 +1,178 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { Code, FolderGit2, ArrowLeft, UserPlus, UserCheck, Sparkles } from 'lucide-react';
 import axios from 'axios';
 import Loader from '../components/Loader';
-import PostCard from '../components/PostCard';
-import { UserPlus, UserCheck, Code, BookOpen, ArrowLeft } from 'lucide-react';
 
 function PublicProfile() {
   const { id } = useParams();
-  const [profileData, setProfileData] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [following, setFollowing] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
 
-  const currentUser = JSON.parse(localStorage.getItem('userInfo') || '{}');
-  const token = localStorage.getItem('token');
-
-  const fetchStudentProfile = async () => {
-    setLoading(true);
-    try {
-      const { data } = await axios.get(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/users/${id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setProfileData(data.profile);
-      setPosts(data.posts || []);
-
-      const isUserFollowing = data.profile.followers?.includes(currentUser._id);
-      setFollowing(!!isUserFollowing);
-    } catch (err) {
-      console.error('Failed to fetch student profile', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (id) fetchStudentProfile();
+  useEffect(() => { 
+    fetchProfile(); 
   }, [id]);
 
-  const handleFollowToggle = async () => {
-    setActionLoading(true);
+  const fetchProfile = async () => {
     try {
-      await axios.put(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/users/${id}/follow`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setFollowing(!following);
-      setProfileData(prev => ({
-        ...prev,
-        followers: following 
-          ? prev.followers.filter(fId => fId !== currentUser._id)
-          : [...(prev.followers || []), currentUser._id]
-      }));
-    } catch (err) {
-      console.error('Follow error', err);
-    } finally {
-      setActionLoading(false);
+      const token = localStorage.getItem('token');
+      const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      setProfile(data.profile);
+      setPosts(data.posts);
+      
+      const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+      if (data.profile.followers?.includes(userInfo._id)) setIsFollowing(true);
+    } catch (error) { 
+      console.error("Error fetching peer profile:", error); 
     }
   };
 
-  const handleLike = async (postId) => {
+  const handleFollow = async () => {
     try {
-      await axios.put(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/posts/${postId}/like`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      fetchStudentProfile();
-    } catch (err) {
-      console.error(err);
+      const token = localStorage.getItem('token');
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/users/${id}/follow`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      setIsFollowing(!isFollowing);
+      fetchProfile();
+    } catch (error) { 
+      console.error("Error updating follow status", error); 
     }
   };
 
-  const handleComment = async (postId, text) => {
-    try {
-      await axios.post(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/posts/${postId}/comment`,
-        { text },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      fetchStudentProfile();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  if (loading) return <Loader text="Fetching Student Profile..." />;
-  if (!profileData) return (
-    <div className="text-center py-12 text-gray-500">
-      Student profile not found.
-      <div className="mt-4">
-        <Link to="/hub/network" className="text-xs text-indigo-500 hover:underline">Return to Campus Network</Link>
-      </div>
-    </div>
-  );
-
-  const isSelf = currentUser._id === profileData._id;
+  if (!profile) return <Loader text="Loading peer profile..." />;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <Link to="/hub/network" className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-        <ArrowLeft className="w-4 h-4" /> Back to Campus Network
+    <div className="space-y-6 w-full">
+      <Link 
+        to="/hub/feed" 
+        className="inline-flex items-center gap-2 text-xs font-black text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors uppercase tracking-wider"
+      >
+        <ArrowLeft className="w-4 h-4" /> Back to Feed
       </Link>
 
-      {/* Header Card */}
-      <div className="bg-white dark:bg-[#111112] border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm relative overflow-hidden">
-        <div className="h-28 bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-500 -m-6 mb-6 opacity-90" />
-
-        <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between gap-4 mb-6">
-          <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 text-center sm:text-left">
-            <div className="w-24 h-24 shrink-0 rounded-full border-4 border-white dark:border-[#111112] overflow-hidden shadow-lg bg-indigo-600 flex items-center justify-center -mt-16 sm:-mt-16 z-10">
-              <img 
-                src={profileData.profilePicture && profileData.profilePicture.trim() !== '' ? profileData.profilePicture : `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.name || profileData.rollNo || 'Student')}&background=6366f1&color=fff&bold=true`} 
-                alt={profileData.name || profileData.rollNo} 
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="pt-2 sm:pt-0">
-              <h1 className="text-2xl font-black text-gray-900 dark:text-white flex items-center justify-center sm:justify-start gap-2">
-                {profileData.name || profileData.rollNo || 'Student'}
-              </h1>
-              <p className="text-xs font-mono text-gray-500 dark:text-gray-400 mt-0.5">
-                {profileData.rollNo} • {profileData.branch || 'CSE'} ({profileData.course || 'B.Tech'})
+      <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-md p-6 shadow-sm space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <img 
+              src={profile.profilePicture || "https://img.freepik.com/premium-vector/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-vector-illustration_561158-3485.jpg"} 
+              alt="Profile" 
+              className="w-15 h-15 md:w-18 md:h-18 rounded-full border border-gray-200 dark:border-white/10 object-cover bg-gray-200 shadow-sm shrink-0" 
+            />
+            <div>
+              <h1 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white mb-1">{profile.name}</h1>
+              <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
+                <span>Roll No: {profile.rollNo}</span>
+                <span>•</span>
+                <span>{profile.course || "B.Tech"} {profile.branch || "CSE"}</span>
               </p>
             </div>
           </div>
-
-          {!isSelf && (
-            <button 
-              onClick={handleFollowToggle}
-              disabled={actionLoading}
-              className={`flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer ${
-                following 
-                  ? 'bg-gray-200 dark:bg-white/10 text-gray-800 dark:text-white hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/20' 
-                  : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-              }`}
-            >
-              {following ? (
-                <>
-                  <UserCheck className="w-4 h-4 text-green-500" /> Following
-                </>
-              ) : (
-                <>
-                  <UserPlus className="w-4 h-4" /> Follow Student
-                </>
-              )}
-            </button>
-          )}
+          
+          <button 
+            onClick={handleFollow} 
+            className={`px-6 py-2.5 rounded-sm cursor-pointer text-xs font-black flex items-center justify-center gap-2 transition-all shadow-sm shrink-0 ${
+              isFollowing 
+                ? 'bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-white hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400 border border-gray-200 dark:border-white/10' 
+                : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-indigo-500/25 hover:-translate-y-0.5'
+            }`}
+          >
+            {isFollowing ? <><UserCheck className="w-4 h-4" /> Following</> : <><UserPlus className="w-4 h-4" /> Connect</>}
+          </button>
         </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 bg-gray-50 dark:bg-white/5 rounded-xl p-3 border border-gray-100 dark:border-white/5 text-center">
-          <div>
-            <span className="block text-lg font-black text-gray-900 dark:text-white">{posts.length}</span>
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Posts</span>
+        
+        {/* Followers & Following Counters */}
+        <div className="flex gap-4 text-xs border-t border-gray-100 dark:border-white/5 pt-4">
+          <div className="p-2">
+            <span className="font-black text-sm text-gray-900 dark:text-white mr-1.5">{profile.followers?.length || 0}</span> 
+            <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">Followers</span>
           </div>
-          <div className="border-x border-gray-200 dark:border-white/10">
-            <span className="block text-lg font-black text-gray-900 dark:text-white">{profileData.followers?.length || 0}</span>
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Followers</span>
-          </div>
-          <div>
-            <span className="block text-lg font-black text-gray-900 dark:text-white">{profileData.following?.length || 0}</span>
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Following</span>
+          <div className="p-2">
+            <span className="font-black text-sm text-gray-900 dark:text-white mr-1.5">{profile.following?.length || 0}</span> 
+            <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">Following</span>
           </div>
         </div>
+      </div>
 
-        {/* Tech Stack */}
-        {profileData.techStack?.length > 0 && (
-          <div className="mt-5 pt-4 border-t border-gray-100 dark:border-white/5">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Code className="w-3.5 h-3.5 text-indigo-500" /> Tech Stack & Skills
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          {/* Tech Stack */}
+          <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-md p-6 shadow-sm">
+            <h3 className="text-xs font-black mb-4 flex items-center gap-2 text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+              <Code className="w-4 h-4" /> Technical Stack
             </h3>
             <div className="flex flex-wrap gap-2">
-              {profileData.techStack.map((tech, idx) => (
-                <span 
-                  key={idx}
-                  className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 text-xs font-semibold rounded-md border border-indigo-100 dark:border-indigo-500/20"
-                >
-                  {tech}
-                </span>
-              ))}
+              {profile.techStack?.length > 0 ? (
+                profile.techStack.map((tech, i) => (
+                  <span key={i} className="px-3 py-1.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-sm text-xs font-extrabold text-gray-800 dark:text-gray-200">
+                    {tech}
+                  </span>
+                ))
+              ) : (
+                <span className="text-gray-400 italic text-xs">No technical stack listed by user.</span>
+              )}
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Student Posts */}
-      <div className="space-y-4">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-indigo-500" /> Recent Posts ({posts.length})
-        </h2>
-
-        {posts.length === 0 ? (
-          <div className="text-center py-10 bg-white dark:bg-[#111112] border border-gray-200 dark:border-white/10 rounded-xl">
-            <p className="text-xs text-gray-500 dark:text-gray-400">No posts by this student yet.</p>
+          {/* Projects */}
+          <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-md p-6 shadow-sm">
+            <h3 className="text-xs font-black mb-4 flex items-center gap-2 text-cyan-600 dark:text-cyan-400 uppercase tracking-wider">
+              <FolderGit2 className="w-4 h-4" /> Project Portfolio
+            </h3>
+            <div className="space-y-3">
+              {profile.projects?.length > 0 ? (
+                profile.projects.map((proj, i) => (
+                  <div key={i} className="bg-gray-50 dark:bg-white/5 border border-gray-200/80 dark:border-white/10 p-4 rounded-sm">
+                    <h4 className="font-extrabold text-sm text-gray-900 dark:text-white">{proj.title}</h4>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 my-1.5 leading-relaxed">{proj.description}</p>
+                    {proj.link && (
+                      <a 
+                        href={proj.link} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="text-[11px] uppercase font-black text-indigo-600 dark:text-indigo-400 hover:underline break-all inline-block mt-1"
+                      >
+                        View Repository →
+                      </a>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <span className="text-gray-400 italic text-xs">No project showcases listed.</span>
+              )}
+            </div>
           </div>
-        ) : (
-          posts.map(post => (
-            <PostCard 
-              key={post._id} 
-              post={{ ...post, author: profileData }}
-              currentUserId={currentUser._id}
-              onLike={handleLike}
-              onComment={handleComment}
-            />
-          ))
-        )}
-      </div>
+        </div>
 
+        {/* Activity Feed */}
+        <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-md p-6 shadow-sm h-fit">
+          <h3 className="text-xs font-black mb-5 flex items-center gap-2 uppercase tracking-wider text-gray-900 dark:text-gray-100">
+            <Sparkles className="w-4 h-4 text-amber-500" /> Published Activity
+          </h3>
+          
+          <div className="space-y-4">
+            {posts?.length > 0 ? (
+              posts.map(post => (
+                <div key={post._id} className="p-4 rounded-sm bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 px-2 py-0.5 mb-1 rounded-sm">
+                      {post.type}
+                    </span>
+                    <span className="text-[11px] font-semibold text-gray-400">
+                      {new Date(post.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <h4 className="font-extrabold text-sm leading-tight mb-1 text-gray-900 dark:text-white">{post.title}</h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 leading-relaxed">{post.content}</p>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-xs font-semibold text-gray-400 italic border border-dashed border-gray-200 dark:border-white/10 rounded-md">
+                No recent activity recorded for this student.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

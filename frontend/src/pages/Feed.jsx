@@ -1,307 +1,181 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { Image as ImageIcon, Megaphone, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import PostCard from '../components/PostCard';
 import Loader from '../components/Loader';
-import ConfirmModal from '../components/ConfirmModal';
-import { Send, Image as ImageIcon, Megaphone, HelpCircle, Sparkles, Filter } from 'lucide-react';
 
 function Feed() {
+  const [user, setUser] = useState(null);
   const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filterType, setFilterType] = useState('all');
-  const [deletePostId, setDeletePostId] = useState(null);
-
-  // Create post state
+  const [activeTab, setActiveTab] = useState('all');
+  const [isLoading, setIsLoading] = useState(true); 
+  
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [type, setType] = useState('general');
+  const [postType, setPostType] = useState('blog');
   const [itemStatus, setItemStatus] = useState('lost');
   const [images, setImages] = useState([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [isPosting, setIsPosting] = useState(false); 
+  const fileInputRef = useRef(null);
 
-  const currentUser = JSON.parse(localStorage.getItem('userInfo') || '{}');
-  const token = localStorage.getItem('token');
+  useEffect(() => {
+    const userInfo = localStorage.getItem('userInfo');
+    if (userInfo) setUser(JSON.parse(userInfo));
+  }, []);
 
-  const fetchPosts = async (selectedType = filterType) => {
-    setLoading(true);
+  const fetchPosts = async () => {
+    setIsLoading(true);
     try {
-      let url = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/posts`;
-      if (selectedType !== 'all') {
-        url += `?type=${selectedType}`;
-      }
-      const { data } = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const token = localStorage.getItem('token');
+      const url = activeTab === 'all' 
+        ? `${import.meta.env.VITE_API_URL}/api/posts` 
+        : `${import.meta.env.VITE_API_URL}/api/posts?type=${activeTab}`;
+      const { data } = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
       setPosts(data);
-    } catch (err) {
-      console.error('Failed to fetch posts', err);
+    } catch (error) {
+      console.error("Error fetching posts:", error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchPosts(filterType);
-  }, [filterType]);
+  useEffect(() => { 
+    if (user) fetchPosts(); 
+    if (activeTab !== 'all') setPostType(activeTab);
+    else setPostType('blog');
+  }, [activeTab, user]);
 
-  const handleCreatePost = async (e) => {
-    e.preventDefault();
-    if (!title.trim() || !content.trim()) {
-      setError('Title and content are required.');
-      return;
-    }
-
-    for (let i = 0; i < images.length; i++) {
-      if (images[i].size > 10 * 1024 * 1024) {
-        setError(`Image "${images[i].name}" exceeds maximum limit of 10MB.`);
-        return;
-      }
-    }
-
-    setError('');
-    setSubmitting(true);
-
+  const handleCreatePost = async () => {
+    if (!title.trim() || !content.trim()) return alert("Title and Content required.");
+    setIsPosting(true);
     try {
+      const token = localStorage.getItem('token');
       const formData = new FormData();
       formData.append('title', title);
       formData.append('content', content);
-      formData.append('type', type);
-      if (type === 'lost-found') {
-        formData.append('itemStatus', itemStatus);
-      }
-      for (let i = 0; i < images.length; i++) {
-        formData.append('images', images[i]);
-      }
+      formData.append('type', postType);
+      if (postType === 'lost-found') formData.append('itemStatus', itemStatus);
+      Array.from(images).forEach(file => formData.append('images', file));
 
-      await axios.post(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/posts`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
-          }
-        }
-      );
-
-      // Reset form
-      setTitle('');
-      setContent('');
-      setType('general');
-      setItemStatus('lost');
-      setImages([]);
-      fetchPosts(filterType);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create post');
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/posts`, formData, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+      });
+      setTitle(''); setContent(''); setImages([]); fetchPosts();
+    } catch (error) {
+      alert(error.response?.data?.message || "Something went wrong");
     } finally {
-      setSubmitting(false);
+      setIsPosting(false);
     }
   };
 
   const handleLike = async (postId) => {
     try {
-      const { data } = await axios.put(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/posts/${postId}/like`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      setPosts(prev => prev.map(p => {
-        if (p._id === postId) {
-          const alreadyLiked = p.likes.includes(currentUser._id);
-          const updatedLikes = alreadyLiked 
-            ? p.likes.filter(id => id !== currentUser._id)
-            : [...p.likes, currentUser._id];
-          return { ...p, likes: updatedLikes };
+      const token = localStorage.getItem('token');
+      setPosts(posts.map(post => {
+        if (post._id === postId) {
+          const hasLiked = post.likes.includes(user._id);
+          const newLikes = hasLiked ? post.likes.filter(id => id !== user._id) : [...post.likes, user._id];
+          return { ...post, likes: newLikes };
         }
-        return p;
+        return post;
       }));
-    } catch (err) {
-      console.error('Like failed', err);
-    }
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/like`, {}, { headers: { Authorization: `Bearer ${token}` } });
+    } catch { fetchPosts(); }
   };
 
   const handleComment = async (postId, text) => {
     try {
-      const { data } = await axios.post(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/posts/${postId}/comment`,
-        { text },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      setPosts(prev => prev.map(p => {
-        if (p._id === postId) {
-          return { ...p, comments: data };
-        }
-        return p;
-      }));
-    } catch (err) {
-      console.error('Comment failed', err);
-    }
+      const token = localStorage.getItem('token');
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/comment`, { text }, { headers: { Authorization: `Bearer ${token}` } });
+      fetchPosts(); 
+    } catch (error) { console.error(error); }
   };
 
-  const executeDeletePost = async () => {
-    if (!deletePostId) return;
-    try {
-      await axios.delete(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/posts/${deletePostId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setDeletePostId(null);
-      fetchPosts(filterType);
-    } catch (err) {
-      console.error('Delete post error', err);
-    }
-  };
+  if (!user) return null;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      
-      {/* Create Post Box */}
-      <div className="bg-white dark:bg-[#111112] border border-gray-200 dark:border-white/10 rounded-xl p-5 shadow-sm">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-3 flex items-center gap-2">
-          <Sparkles className="w-4 h-4" /> Share with Campus
-        </h2>
+    <div className="w-full space-y-4">
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+        {['all', 'announcement', 'blog', 'lost-found'].map((tab) => (
+          <button 
+            key={tab}
+            onClick={() => setActiveTab(tab)} 
+            className={`px-4 py-2 rounded-sm text-xs font-extrabold whitespace-nowrap transition-all uppercase tracking-wider ${activeTab === tab ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}
+          >
+            {tab === 'all' ? 'All Activity' : tab === 'announcement' ? 'Announcements' : tab === 'blog' ? 'Student Blogs' : 'Lost & Found'}
+          </button>
+        ))}
+      </div>
 
-        {error && (
-          <div className="mb-3 p-3 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-xs rounded-lg border border-red-200 dark:border-red-500/20">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleCreatePost} className="space-y-3">
-          <input 
-            type="text"
-            placeholder="Post Title..."
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-indigo-500 rounded-lg px-3.5 py-2 text-sm text-gray-900 dark:text-white outline-none transition-all"
-          />
-
-          <textarea 
-            placeholder="What's happening on campus?"
-            rows={3}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-indigo-500 rounded-lg p-3.5 text-sm text-gray-900 dark:text-white outline-none transition-all resize-none"
-          />
-
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-gray-100 dark:border-white/5">
-            <div className="flex flex-wrap items-center gap-3">
-              
-              {/* Type selector */}
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-xs text-gray-700 dark:text-gray-300 font-medium rounded-lg px-3 py-1.5 outline-none cursor-pointer"
-              >
-                <option value="general" className="bg-white dark:bg-[#151516]">General Post</option>
-                <option value="lost-found" className="bg-white dark:bg-[#151516]">Lost & Found</option>
-                {(currentUser.isAdmin || currentUser.role === 'admin') && (
-                  <option value="announcement" className="bg-white dark:bg-[#151516]">Announcement</option>
-                )}
-              </select>
-
-              {/* Status for Lost & Found */}
-              {type === 'lost-found' && (
-                <select
-                  value={itemStatus}
-                  onChange={(e) => setItemStatus(e.target.value)}
-                  className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-xs text-gray-700 dark:text-gray-300 font-medium rounded-lg px-3 py-1.5 outline-none cursor-pointer"
-                >
-                  <option value="lost" className="bg-white dark:bg-[#151516]">Item Lost</option>
-                  <option value="found" className="bg-white dark:bg-[#151516]">Item Found</option>
+      {user.role === 'admin' || activeTab !== 'announcement' ? (
+        <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-md p-4 shadow-sm">
+          {(activeTab === 'all' || postType === 'lost-found') && (
+            <div className="flex flex-wrap gap-3 items-center mb-3">
+              {activeTab === 'all' && (
+                <select value={postType} onChange={(e) => setPostType(e.target.value)} className="bg-gray-50 dark:bg-white/5 text-xs font-extrabold px-3 py-1.5 rounded-sm outline-none text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10">
+                  <option className="bg-white dark:bg-[#111] text-gray-900 dark:text-white" value="blog">Student Blog</option>
+                  <option className="bg-white dark:bg-[#111] text-gray-900 dark:text-white" value="lost-found">Lost & Found</option>
+                  {user.role === 'admin' && <option className="bg-white dark:bg-[#111] text-gray-900 dark:text-white" value="announcement">Announcement</option>}
                 </select>
               )}
-
-              {/* Image Input */}
-              <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer transition-colors px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5">
-                <ImageIcon className="w-4 h-4 text-indigo-500" />
-                <span>{images.length > 0 ? `${images.length} Image(s)` : 'Attach Image'}</span>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  multiple 
-                  onChange={(e) => setImages(Array.from(e.target.files))}
-                  className="hidden" 
-                />
-              </label>
+              {postType === 'lost-found' && (
+                <select value={itemStatus} onChange={(e) => setItemStatus(e.target.value)} className="bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400 text-xs font-extrabold px-3 py-1.5 rounded-sm outline-none border border-pink-100 dark:border-pink-500/20">
+                  <option className="bg-white dark:bg-[#111] text-gray-900 dark:text-white" value="lost">Lost Item</option>
+                  <option className="bg-white dark:bg-[#111] text-gray-900 dark:text-white" value="found">Found Item</option>
+                </select>
+              )}
             </div>
+          )}
+          <input type="text" placeholder={postType === 'lost-found' ? "What did you lose or find?" : "Post Title..."} value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-transparent border-none text-base font-black mb-1 outline-none placeholder-gray-400 text-gray-900 dark:text-white" />
+          <textarea placeholder={postType === 'lost-found' ? "Describe the item and where you last saw it..." : "Write something..."} value={content} onChange={(e) => setContent(e.target.value)} rows="7" className="w-full bg-transparent border-none text-sm outline-none placeholder-gray-500 resize-none text-gray-700 dark:text-gray-300" />
+          
+          {images.length > 0 && (
+            <div className="flex gap-2 my-2 overflow-x-auto">
+              {Array.from(images).map((file, i) => (
+                <div key={i} className="relative w-16 h-16 shrink-0 rounded-sm overflow-hidden border border-gray-200 dark:border-white/10">
+                  <img src={URL.createObjectURL(file)} alt="preview" className="object-cover w-full h-full" />
+                </div>
+              ))}
+            </div>
+          )}
 
-            <button 
-              type="submit"
-              disabled={submitting}
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>{submitting ? 'Posting...' : 'Publish'}</span>
+          <div className="mt-2 pt-3 border-t border-gray-100 dark:border-white/5 flex flex-wrap justify-between items-center gap-2">
+            <input type="file" multiple accept="image/*" ref={fileInputRef} onChange={(e) => setImages(e.target.files)} className="hidden" />
+            <button onClick={() => fileInputRef.current.click()} className="flex items-center gap-1.5 text-xs font-bold text-gray-500 cursor-pointer hover:text-indigo-500 transition-colors">
+              <ImageIcon className="w-4 h-4" /> Attach Image
+            </button>
+            <button onClick={handleCreatePost} disabled={isPosting} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-sm cursor-pointer font-extrabold text-xs transition-all flex items-center gap-2 shadow-sm">
+              {isPosting ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Posting...</> : 'Publish Post'}
             </button>
           </div>
-        </form>
-      </div>
-
-      {/* Feed Filters */}
-      <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-            <Filter className="w-3.5 h-3.5" /> Filter:
-          </span>
-          {[
-            { id: 'all', label: 'All Posts' },
-            { id: 'general', label: 'General' },
-            { id: 'lost-found', label: 'Lost & Found' },
-            { id: 'announcement', label: 'Announcements' }
-          ].map(f => (
-            <button
-              key={f.id}
-              onClick={() => setFilterType(f.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                filterType === f.id
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-white dark:bg-[#111112] text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Posts Feed */}
-      {loading ? (
-        <Loader text="Loading Campus Feed..." />
-      ) : posts.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-[#111112] border border-gray-200 dark:border-white/10 rounded-xl p-8">
-          <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">No posts found in this section yet.</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Be the first to share an update!</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {posts.map(post => (
-            <PostCard 
-              key={post._id} 
-              post={post} 
-              currentUserId={currentUser._id}
-              currentUser={currentUser}
-              onLike={handleLike}
-              onComment={handleComment}
-              onDelete={(id) => setDeletePostId(id)}
-            />
-          ))}
-        </div>
+         <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/20 text-purple-600 dark:text-purple-300 p-4 rounded-sm text-xs font-extrabold flex items-center gap-2 uppercase tracking-wider">
+           <Megaphone className="w-4 h-4"/> Only Administrators can broadcast university announcements.
+         </div>
       )}
 
-      {/* Confirm Delete Modal */}
-      <ConfirmModal 
-        isOpen={!!deletePostId}
-        onClose={() => setDeletePostId(null)}
-        onConfirm={executeDeletePost}
-        title="Delete Post"
-        message="Are you sure you want to delete this campus post? It will be permanently removed."
-        confirmText="Delete Post"
-      />
-
+      {isLoading ? (
+        <Loader text="Fetching campus activity..." />
+      ) : (
+        <div className="space-y-4">
+          {posts.length === 0 ? (
+            <div className="text-center py-12 text-xs font-bold text-gray-400 uppercase tracking-wider bg-white dark:bg-[#111] rounded-md border border-gray-200 dark:border-white/10">
+              No activity recorded in this module yet.
+            </div>
+          ) : (
+            posts.map((post) => (
+              <PostCard 
+                key={post._id} 
+                post={post} 
+                currentUserId={user._id} 
+                onLike={handleLike} 
+                onComment={handleComment} 
+              />
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }
