@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createPost, getPosts, toggleLike, addComment } = require('../controllers/postController');
+const { createPost, getPosts, toggleLike, addComment, deletePost } = require('../controllers/postController');
 const { protect } = require('../middlewares/authMiddleware');
 const upload = require('../middlewares/uploadMiddleware');
 
@@ -10,6 +10,7 @@ router.route('/')
     .post(protect, upload.array('images', 3), createPost);
 
 // Interaction Routes
+router.delete('/:id', protect, deletePost);
 router.put('/:id/like', protect, toggleLike);
 router.post('/:id/comment', protect, addComment);
 

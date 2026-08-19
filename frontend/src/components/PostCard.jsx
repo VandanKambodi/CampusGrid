@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Heart, MessageCircle, Send } from 'lucide-react';
+import { Heart, MessageCircle, Send, Trash2 } from 'lucide-react';
 
-function PostCard({ post, currentUserId, onLike, onComment }) {
+function PostCard({ post, currentUserId, onLike, onComment, onDelete, currentUser }) {
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [replyText, setReplyText] = useState('');
   const isLiked = post.likes.includes(currentUserId);
+  
+  const user = currentUser || JSON.parse(localStorage.getItem('userInfo') || '{}');
+  const canDelete = onDelete && (user.isAdmin || user.role === 'admin' || post.author?._id === currentUserId);
 
   const handleCommentSubmit = () => {
     if (!replyText.trim()) return;
@@ -31,11 +34,13 @@ function PostCard({ post, currentUserId, onLike, onComment }) {
       
       <div className="flex justify-between items-start mb-3">
         <div className="flex gap-2.5 items-center">
-          <img 
-            src={post.author?.profilePicture || "https://img.freepik.com/premium-vector/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-vector-illustration_561158-3485.jpg"} 
-            alt="avatar" 
-            className="w-10 h-10 rounded-full border border-gray-100 dark:border-white/10 object-cover shrink-0" 
-          />
+          <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 border border-gray-100 dark:border-white/10 bg-indigo-600 flex items-center justify-center">
+            <img 
+              src={post.author?.profilePicture && post.author.profilePicture.trim() !== '' ? post.author.profilePicture : `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author?.name || post.author?.rollNo || 'Student')}&background=6366f1&color=fff&bold=true`} 
+              alt="avatar" 
+              className="w-full h-full object-cover" 
+            />
+          </div>
           <div>
             <h4 className="font-bold text-sm leading-tight flex items-center gap-1.5 text-gray-900 dark:text-white">
               {post.author?.name || "Anonymous Student"}
@@ -50,9 +55,20 @@ function PostCard({ post, currentUserId, onLike, onComment }) {
             </span>
           </div>
         </div>
-        <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-sm uppercase tracking-wider border shrink-0 ${getBadgeStyles()}`}>
-          {post.type === 'lost-found' ? post.itemStatus : post.type}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-sm uppercase tracking-wider border shrink-0 ${getBadgeStyles()}`}>
+            {post.type === 'lost-found' ? post.itemStatus : post.type}
+          </span>
+          {canDelete && (
+            <button
+              onClick={() => onDelete(post._id)}
+              title="Delete Post"
+              className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {isLostFoundWithImage ? (
@@ -112,11 +128,13 @@ function PostCard({ post, currentUserId, onLike, onComment }) {
         <div className="mt-3 pt-3 border-t border-gray-50 dark:border-white/5 space-y-3">
           {post.comments.map(comment => (
             <div key={comment._id} className="flex gap-2.5">
-              <img 
-                src={comment.user?.profilePicture || "https://img.freepik.com/premium-vector/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-vector-illustration_561158-3485.jpg"} 
-                alt="avatar" 
-                className="w-7 h-7 rounded-full object-cover shrink-0 border border-gray-200 dark:border-white/10" 
-              />
+              <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 border border-gray-200 dark:border-white/10 bg-indigo-600 flex items-center justify-center">
+                <img 
+                  src={comment.user?.profilePicture && comment.user.profilePicture.trim() !== '' ? comment.user.profilePicture : `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.user?.name || 'Student')}&background=6366f1&color=fff&bold=true`} 
+                  alt="avatar" 
+                  className="w-full h-full object-cover" 
+                />
+              </div>
               <div className="bg-gray-50 dark:bg-white/5 px-3.5 py-2 rounded-sm flex-1">
                 <span className="font-bold text-xs block mb-0.5 text-gray-900 dark:text-gray-200">{comment.user?.name || "Student"}</span>
                 <span className="text-xs text-gray-700 dark:text-gray-300 leading-normal">{comment.text}</span>
