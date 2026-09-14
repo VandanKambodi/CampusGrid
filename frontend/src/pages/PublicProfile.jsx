@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Code, FolderGit2, ArrowLeft, UserPlus, UserCheck, Sparkles } from 'lucide-react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Code, FolderGit2, ArrowLeft, UserPlus, UserCheck, Sparkles, MessageCircle } from 'lucide-react';
 import axios from 'axios';
 import Loader from '../components/Loader';
 
@@ -9,12 +9,13 @@ function PublicProfile() {
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
   const [isFollowing, setIsFollowing] = useState(false);
+  const navigate = useNavigate();
+  const currentUser = JSON.parse(localStorage.getItem('userInfo') || '{}');
+  const isOwnProfile = currentUser._id === id;
+  const isBlocked = currentUser.blockedUsers?.includes(id);
+  const isAdminProfile = profile?.role === 'admin';
 
-  useEffect(() => { 
-    fetchProfile(); 
-  }, [id]);
-
-  const fetchProfile = async () => {
+  async function fetchProfile() {
     try {
       const token = localStorage.getItem('token');
       const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/${id}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -26,7 +27,12 @@ function PublicProfile() {
     } catch (error) { 
       console.error("Error fetching peer profile:", error); 
     }
-  };
+  }
+
+  useEffect(() => {
+    const loadProfile = setTimeout(() => fetchProfile(), 0);
+    return () => clearTimeout(loadProfile);
+  }, [id]);
 
   const handleFollow = async () => {
     try {
@@ -68,16 +74,25 @@ function PublicProfile() {
             </div>
           </div>
           
-          <button 
+          <div className="flex items-center gap-2 shrink-0">
+          {!isOwnProfile && !isAdminProfile && currentUser.role !== 'admin' && <button
+            onClick={() => navigate(`/hub/chat?userId=${id}`)}
+            disabled={isBlocked}
+            className="px-4 py-2.5 rounded-sm cursor-pointer text-xs font-black flex items-center justify-center gap-2 transition-all shadow-sm bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed text-white"
+          >
+            <MessageCircle className="w-4 h-4" /> Message
+          </button>}
+          {!isOwnProfile && <button 
             onClick={handleFollow} 
-            className={`px-6 py-2.5 rounded-sm cursor-pointer text-xs font-black flex items-center justify-center gap-2 transition-all shadow-sm shrink-0 ${
+            className={`px-4 py-2.5 rounded-sm cursor-pointer text-xs font-black flex items-center justify-center gap-2 transition-all shadow-sm ${
               isFollowing 
                 ? 'bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-white hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400 border border-gray-200 dark:border-white/10' 
                 : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-indigo-500/25 hover:-translate-y-0.5'
             }`}
           >
             {isFollowing ? <><UserCheck className="w-4 h-4" /> Following</> : <><UserPlus className="w-4 h-4" /> Connect</>}
-          </button>
+          </button>}
+          </div>
         </div>
         
         {/* Followers & Following Counters */}

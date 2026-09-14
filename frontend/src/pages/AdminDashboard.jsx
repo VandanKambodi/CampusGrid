@@ -46,6 +46,7 @@ function AdminDashboard() {
   const [creatingUser, setCreatingUser] = useState(false);
   const [createSuccess, setCreateSuccess] = useState('');
   const [createError, setCreateError] = useState('');
+  const [reports, setReports] = useState([]);
 
   const token = localStorage.getItem('token');
   const currentUser = JSON.parse(localStorage.getItem('userInfo') || '{}');
@@ -80,9 +81,19 @@ function AdminDashboard() {
     }
   };
 
+  const fetchReports = async () => {
+    try {
+      const { data } = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/chat/reports`, { headers: { Authorization: `Bearer ${token}` } });
+      setReports(data);
+    } catch (err) {
+      console.error('Failed to fetch chat reports', err);
+    }
+  };
+
   useEffect(() => {
     fetchPendingRequests();
     fetchStudents();
+    fetchReports();
   }, []);
 
   const handleProcessRequest = async (requestId, status) => {
@@ -101,6 +112,32 @@ function AdminDashboard() {
       console.error('Request action failed', err);
     } finally {
       setProcessingId(null);
+    }
+  };
+
+  const updateReportStatus = async (reportId, status) => {
+    try {
+      await axios.patch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/chat/reports/${reportId}`, { status }, { headers: { Authorization: `Bearer ${token}` } });
+      fetchReports();
+    } catch (err) {
+      setMessage(err.response?.data?.message || 'Unable to update report.');
+    }
+  };
+
+  const deleteReportedAccount = async (report) => {
+    const reportedUser = report.reportedUser;
+    if (!reportedUser?._id || !window.confirm(`Delete ${reportedUser.name}'s account? This cannot be undone.`)) return;
+
+    try {
+      await axios.delete(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/hub/admin/users/${reportedUser._id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      await updateReportStatus(report._id, 'resolved');
+      setMessage(`${reportedUser.name}'s account was deleted and the report was resolved.`);
+      fetchStudents();
+    } catch (err) {
+      setMessage(err.response?.data?.message || 'Unable to delete the reported account.');
     }
   };
 
@@ -218,6 +255,11 @@ function AdminDashboard() {
           <button onClick={() => setMessage('')} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
         </div>
       )}
+
+      <div className="bg-white dark:bg-[#111112] border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm space-y-4">
+        <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-amber-500" /> Chat Reports ({reports.length})</h2>
+        {reports.length === 0 ? <p className="text-xs text-gray-500">No chat reports have been submitted.</p> : <div className="overflow-x-auto"><table className="w-full text-left text-xs"><thead><tr className="border-b border-gray-100 dark:border-white/10 text-[10px] uppercase text-gray-400"><th className="py-2">Reported user</th><th>Reason</th><th>Status</th><th className="text-right">Admin decision</th></tr></thead><tbody className="divide-y divide-gray-100 dark:divide-white/5">{reports.map(report => <tr key={report._id}><td className="py-3 font-bold text-gray-900 dark:text-white">{report.reportedUser?.name || 'Unknown'}</td><td className="capitalize text-gray-500">{report.reason}</td><td className="capitalize text-gray-500">{report.status}</td><td className="text-right"><div className="flex justify-end gap-2">{report.status !== 'resolved' && <button onClick={() => updateReportStatus(report._id, report.status === 'pending' ? 'reviewed' : 'resolved')} className="px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white font-bold">{report.status === 'pending' ? 'Mark reviewed' : 'Resolve'}</button>}{report.reportedUser?._id && report.status !== 'resolved' && <button onClick={() => deleteReportedAccount(report)} className="px-2.5 py-1.5 rounded-lg bg-red-600 text-white font-bold">Delete account</button>}</div></td></tr>)}</tbody></table></div>}
+      </div>
 
       {/* Student Accounts Table with Pagination (Limit 5) */}
       <div className="bg-white dark:bg-[#111112] border border-gray-200 dark:border-white/10 rounded-2xl p-6 shadow-sm space-y-4">

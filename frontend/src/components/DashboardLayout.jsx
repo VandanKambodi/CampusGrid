@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, Home, Search as SearchIcon, BookOpen, Users, Briefcase, Bell, User as UserIcon, Sun, Moon, Menu, X, ShieldAlert } from 'lucide-react';
+import { LogOut, Home, Search as SearchIcon, BookOpen, Users, Briefcase, Bell, User as UserIcon, Sun, Moon, Menu, X, ShieldAlert, MessageCircle } from 'lucide-react';
 import axios from 'axios';
 
 function DashboardLayout({ toggleTheme, theme }) {
@@ -9,6 +9,7 @@ function DashboardLayout({ toggleTheme, theme }) {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -26,6 +27,14 @@ function DashboardLayout({ toggleTheme, theme }) {
       window.removeEventListener('storage', checkUser);
     };
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const token = localStorage.getItem('token');
+    axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/chat/conversations`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(({ data }) => setUnreadChatCount(data.reduce((total, conversation) => total + (conversation.unreadCount || 0), 0))).catch(() => {});
+  }, [user, location.pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -50,8 +59,11 @@ function DashboardLayout({ toggleTheme, theme }) {
       }, 300);
       return () => clearTimeout(delayDebounceFn);
     } else {
-      setSearchResults([]);
-      setIsSearching(false);
+      const clearSearch = setTimeout(() => {
+        setSearchResults([]);
+        setIsSearching(false);
+      }, 0);
+      return () => clearTimeout(clearSearch);
     }
   }, [searchQuery]);
 
@@ -156,6 +168,9 @@ function DashboardLayout({ toggleTheme, theme }) {
             <Link onClick={() => setIsMobileMenuOpen(false)} to="/hub/vault" className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-sm text-xs font-extrabold transition-all ${isActive('/vault') ? 'bg-cyan-600 text-white shadow-md shadow-cyan-500/20' : 'hover:bg-gray-100 dark:hover:bg-white/5 text-gray-600 dark:text-gray-400'}`}>
               <BookOpen className="w-4 h-4" /> Resource Vault
             </Link>
+            {user.role !== 'admin' && <Link onClick={() => setIsMobileMenuOpen(false)} to="/hub/chat" className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-sm text-xs font-extrabold transition-all ${isActive('/chat') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'hover:bg-gray-100 dark:hover:bg-white/5 text-gray-600 dark:text-gray-400'}`}>
+              <MessageCircle className="w-4 h-4" /> Chat {unreadChatCount > 0 && <span className="ml-auto min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">{unreadChatCount}</span>}
+            </Link>}
             {user.role === 'admin' && (
               <Link onClick={() => setIsMobileMenuOpen(false)} to="/hub/admin" className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-sm text-xs font-extrabold transition-all ${isActive('/admin') ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' : 'hover:bg-purple-50 dark:hover:bg-purple-500/10 text-purple-600 dark:text-purple-400'}`}>
                 <ShieldAlert className="w-4 h-4" /> Admin Console

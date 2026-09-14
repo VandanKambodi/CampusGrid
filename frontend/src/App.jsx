@@ -11,6 +11,7 @@ import CampusNetwork from './pages/CampusNetwork';
 import Vault from './pages/Vault';
 import Placements from './pages/Placements';
 import AdminDashboard from './pages/AdminDashboard';
+import Chat from './pages/Chat';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -29,6 +30,11 @@ function ScrollToTop() {
 const ProtectedRoute = ({ children }) => {
   const userInfo = localStorage.getItem('userInfo');
   return userInfo ? children : <Navigate to="/login" />;
+};
+
+const StudentChatRoute = () => {
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+  return userInfo.role === 'admin' ? <Navigate to="/hub/admin" replace /> : <Chat />;
 };
 
 function App() {
@@ -72,6 +78,7 @@ function App() {
               <Route path="vault" element={<Vault />} />
               <Route path="network" element={<CampusNetwork />} />
               <Route path="placements" element={<Placements />} />
+              <Route path="chat" element={<StudentChatRoute />} />
 
               <Route path="admin" element={<AdminDashboard />} />
             </Route>
