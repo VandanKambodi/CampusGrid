@@ -45,6 +45,23 @@ function Placements() {
     }
   };
 
+  const handleEditJob = async (id, jobData) => {
+    const token = localStorage.getItem('token');
+    await axios.put(`${import.meta.env.VITE_API_URL}/api/hub/jobs/${id}`, jobData, { headers: { Authorization: `Bearer ${token}` } });
+    fetchJobs();
+  };
+
+  const handleDeleteJob = async (id) => {
+    if (!window.confirm('Delete this placement opportunity?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/hub/jobs/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      setJobs(currentJobs => currentJobs.filter(job => job._id !== id));
+    } catch (error) {
+      alert(error.response?.data?.message || 'Unable to delete this opportunity');
+    }
+  };
+
   if (!user) return null;
 
   return (
@@ -96,7 +113,7 @@ function Placements() {
       ) : (
         <div className="space-y-4">
           {jobs.length > 0 ? (
-            jobs.map(job => <JobCard key={job._id} job={job} />)
+            jobs.map(job => <JobCard key={job._id} job={job} isAdmin={user.role === 'admin' || user.isAdmin} onEdit={handleEditJob} onDelete={handleDeleteJob} />)
           ) : (
             <div className="text-center py-12 text-xs font-bold text-gray-400 uppercase tracking-wider bg-white dark:bg-[#111] rounded-md border border-gray-200 dark:border-white/10">
               No placement opportunities listed at this time.

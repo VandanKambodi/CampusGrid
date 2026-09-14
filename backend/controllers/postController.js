@@ -108,4 +108,34 @@ const deletePost = async (req, res) => {
     }
 };
 
-module.exports = { createPost, getPosts, toggleLike, addComment, deletePost };
+const updatePost = async (req, res) => {
+    const { title, content, itemStatus } = req.body;
+
+    try {
+        const post = await Post.findById(req.params.id);
+        if (!post) return res.status(404).json({ message: 'Post not found' });
+
+        const isAuthor = post.author.toString() === req.user._id.toString();
+        const isAdmin = req.user.role === 'admin' || req.user.isAdmin;
+
+        if (!isAuthor && !isAdmin) {
+            return res.status(403).json({ message: 'Not authorized to edit this post' });
+        }
+
+        if (!title?.trim() || !content?.trim()) {
+            return res.status(400).json({ message: 'Title and content are required' });
+        }
+
+        post.title = title.trim();
+        post.content = content.trim();
+        if (post.type === 'lost-found' && itemStatus) post.itemStatus = itemStatus;
+
+        await post.save();
+        await post.populate('author', 'name rollNo profilePicture branch');
+        res.json(post);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { createPost, getPosts, toggleLike, addComment, deletePost, updatePost };

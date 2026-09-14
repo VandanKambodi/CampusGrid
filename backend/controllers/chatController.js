@@ -184,6 +184,29 @@ const deleteMessage = async (req, res) => {
     }
 };
 
+const updateMessage = async (req, res) => {
+    const content = req.body.content?.trim();
+    if (!content) return res.status(400).json({ message: 'Message content is required' });
+    if (content.length > 2000) return res.status(400).json({ message: 'Message cannot exceed 2000 characters' });
+
+    try {
+        const message = await Message.findOne({ _id: req.params.messageId, sender: req.user._id, deleted: false });
+        if (!message) return res.status(404).json({ message: 'Message not found or not owned by you' });
+
+        message.content = content;
+        message.edited = true;
+        await message.save();
+        const populatedMessage = await Message.findById(message._id)
+            .populate('sender', publicUserFields)
+            .populate('receiver', publicUserFields);
+        const io = req.app.get('io');
+        if (io) io.to(`conversation:${message.conversation}`).emit('message:updated', populatedMessage);
+        res.json(populatedMessage);
+    } catch (error) {
+        res.status(500).json({ message: 'Unable to edit message' });
+    }
+};
+
 const blockUser = async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.userId) || req.params.userId === req.user._id.toString()) {
         return res.status(400).json({ message: 'Invalid student' });
@@ -251,5 +274,5 @@ const updateReport = async (req, res) => {
 
 module.exports = {
     getConversations, createConversation, getMessages, sendMessage, markRead,
-    deleteMessage, blockUser, unblockUser, createReport, getReports, updateReport
+    deleteMessage, updateMessage, blockUser, unblockUser, createReport, getReports, updateReport
 };

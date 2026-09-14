@@ -1,7 +1,7 @@
 import { ArrowLeft, Ban, Flag, Send, Wifi, WifiOff } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 
-function ChatWindow({ conversation, messages, currentUserId, draft, onDraft, onSend, onTyping, typingUser, online, connected, loading, hasMore, onLoadMore, onDelete, onBack, onBlock, onReport }) {
+function ChatWindow({ conversation, messages, currentUserId, draft, onDraft, onSend, onTyping, typingUser, online, connected, loading, hasMore, onLoadMore, onEdit, onDelete, onBack, onBlock, onReport }) {
   if (!conversation) return <section className="hidden md:flex flex-1 items-center justify-center text-center p-8"><div><div className="text-5xl mb-4">💬</div><h2 className="font-black text-gray-900 dark:text-white">Choose a conversation</h2><p className="text-xs text-gray-500 mt-2">Start a private conversation with someone from their profile.</p></div></section>;
   const otherUser = conversation.otherUser;
 
@@ -19,7 +19,7 @@ function ChatWindow({ conversation, messages, currentUserId, draft, onDraft, onS
       <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50/60 dark:bg-black/10">
         {hasMore && <button onClick={onLoadMore} disabled={loading} className="mx-auto block text-[11px] font-bold text-indigo-600 dark:text-indigo-400">{loading ? 'Loading...' : 'Load older messages'}</button>}
         {messages.length === 0 && !loading && <div className="h-full flex items-center justify-center text-center"><div><div className="text-4xl mb-3">👋</div><p className="text-sm font-black text-gray-800 dark:text-white">Start the conversation!</p><p className="text-xs text-gray-500 mt-1">Say hello to {otherUser?.name?.split(' ')[0]}.</p></div></div>}
-        {messages.map(message => <MessageBubble key={message._id} message={message} isOwn={message.sender?._id === currentUserId || message.sender === currentUserId} onDelete={onDelete} />)}
+        {messages.map(message => <MessageBubble key={message._id} message={message} isOwn={message.sender?._id === currentUserId || message.sender === currentUserId} onEdit={onEdit} onDelete={onDelete} />)}
         {typingUser && <p className="text-xs text-gray-500 italic">{typingUser} is typing...</p>}
       </div>
 

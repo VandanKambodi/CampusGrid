@@ -129,11 +129,10 @@ const deleteResource = async (req, res) => {
         const resource = await Resource.findById(req.params.id);
         if (!resource) return res.status(404).json({ message: 'Resource not found' });
 
-        const isUploader = resource.uploadedBy.toString() === req.user._id.toString();
         const isAdmin = req.user.role === 'admin' || req.user.isAdmin;
 
-        if (!isUploader && !isAdmin) {
-            return res.status(403).json({ message: 'Not authorized to delete this resource' });
+        if (!isAdmin) {
+            return res.status(403).json({ message: 'Only admins can delete resources' });
         }
 
         if (resource.fileUrl) {
@@ -159,6 +158,60 @@ const deleteJob = async (req, res) => {
 
         await job.deleteOne();
         res.json({ message: 'Placement drive deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const updateResource = async (req, res) => {
+    try {
+        const resource = await Resource.findById(req.params.id);
+        if (!resource) return res.status(404).json({ message: 'Resource not found' });
+        if (req.user.role !== 'admin' && !req.user.isAdmin) {
+            return res.status(403).json({ message: 'Only admins can edit resources' });
+        }
+
+        const { title, subject, semester, branch } = req.body;
+        if (!title?.trim() || !subject?.trim() || !semester || !branch) {
+            return res.status(400).json({ message: 'Title, subject, semester, and branch are required' });
+        }
+        resource.title = title.trim();
+        resource.subject = subject.trim();
+        resource.semester = semester;
+        resource.branch = branch;
+        if (req.file) {
+            await deleteCloudinaryFile(resource.fileUrl);
+            resource.fileUrl = req.file.path;
+        }
+
+        await resource.save();
+        await resource.populate('uploadedBy', 'name profilePicture');
+        res.json(resource);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const updateJob = async (req, res) => {
+    try {
+        const job = await Job.findById(req.params.id);
+        if (!job) return res.status(404).json({ message: 'Job not found' });
+        if (req.user.role !== 'admin' && !req.user.isAdmin) {
+            return res.status(403).json({ message: 'Only admins can edit placement drives' });
+        }
+
+        const { title, company, description, applyLink, roleType } = req.body;
+        if (!title?.trim() || !company?.trim() || !description?.trim() || !applyLink?.trim() || !roleType) {
+            return res.status(400).json({ message: 'All placement fields are required' });
+        }
+        job.title = title.trim();
+        job.company = company.trim();
+        job.description = description.trim();
+        job.applyLink = applyLink.trim();
+        job.roleType = roleType;
+        await job.save();
+        await job.populate('postedBy', 'name role profilePicture');
+        res.json(job);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -229,5 +282,5 @@ const downloadResource = async (req, res) => {
 
 module.exports = { 
     uploadResource, getResources, toggleResourceUpvote, deleteResource, downloadResource,
-    createJob, getJobs, deleteJob 
+    createJob, getJobs, deleteJob, updateJob, updateResource 
 };

@@ -1,13 +1,28 @@
 import { useState } from 'react';
-import { Heart, MessageCircle, Send, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Pencil, Send, Trash2, X } from 'lucide-react';
 
-function PostCard({ post, currentUserId, onLike, onComment, onDelete, currentUser }) {
+function PostCard({ post, currentUserId, onLike, onComment, onEdit, onDelete, currentUser }) {
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [replyText, setReplyText] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(post.title);
+  const [editContent, setEditContent] = useState(post.content);
+  const [isSaving, setIsSaving] = useState(false);
   const isLiked = post.likes.includes(currentUserId);
   
   const user = currentUser || JSON.parse(localStorage.getItem('userInfo') || '{}');
-  const canDelete = onDelete && (user.isAdmin || user.role === 'admin' || post.author?._id === currentUserId);
+  const canManage = user.isAdmin || user.role === 'admin' || post.author?._id === currentUserId;
+
+  const handleEditSubmit = async () => {
+    if (!editTitle.trim() || !editContent.trim() || !onEdit) return;
+    setIsSaving(true);
+    try {
+      await onEdit(post._id, { title: editTitle, content: editContent });
+      setIsEditing(false);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleCommentSubmit = () => {
     if (!replyText.trim()) return;
@@ -59,54 +74,72 @@ function PostCard({ post, currentUserId, onLike, onComment, onDelete, currentUse
           <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-sm uppercase tracking-wider border shrink-0 ${getBadgeStyles()}`}>
             {post.type === 'lost-found' ? post.itemStatus : post.type}
           </span>
-          {canDelete && (
-            <button
-              onClick={() => onDelete(post._id)}
-              title="Delete Post"
-              className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+          {canManage && (
+            <div className="flex items-center gap-1">
+              {!isEditing && onEdit && (
+                <button onClick={() => setIsEditing(true)} title="Edit Post" className="p-1 text-gray-400 hover:text-indigo-500 transition-colors">
+                  <Pencil className="w-4 h-4" />
+                </button>
+              )}
+              {onDelete && (
+                <button onClick={() => onDelete(post._id)} title="Delete Post" className="p-1 text-gray-400 hover:text-red-500 transition-colors">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
 
-      {isLostFoundWithImage ? (
-        <div className="flex flex-col sm:flex-row gap-5 items-start mb-4">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-base font-black mb-1.5 text-gray-900 dark:text-white leading-snug">{post.title}</h3>
-            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{post.content}</p>
-          </div>
-
-          <div>
-            {post.images.map((imgUrl, i) => (
-              <img 
-                key={i} 
-                src={imgUrl.startsWith('http') ? imgUrl : `${import.meta.env.VITE_API_URL}${imgUrl}`} 
-                alt="lost item full view" 
-                className="w-full h-auto max-h-60 object-contain rounded-sm mx-auto" 
-              />
-            ))}
+      {isEditing && (
+        <div className="mb-4 space-y-2">
+          <input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} className="w-full bg-transparent border border-gray-200 dark:border-white/10 rounded-sm px-3 py-2 text-base font-black outline-none text-gray-900 dark:text-white" />
+          <textarea value={editContent} onChange={(event) => setEditContent(event.target.value)} rows="5" className="w-full bg-transparent border border-gray-200 dark:border-white/10 rounded-sm px-3 py-2 text-sm outline-none resize-none text-gray-700 dark:text-gray-300" />
+          <div className="flex justify-end gap-2">
+            <button onClick={() => { setEditTitle(post.title); setEditContent(post.content); setIsEditing(false); }} className="px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 flex items-center gap-1"><X className="w-3.5 h-3.5" /> Cancel</button>
+            <button onClick={handleEditSubmit} disabled={isSaving} className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-sm text-xs font-bold">{isSaving ? 'Saving...' : 'Save changes'}</button>
           </div>
         </div>
-      ) : (
-        <>
-          <h3 className="text-base font-black mb-1.5 text-gray-900 dark:text-white">{post.title}</h3>
-          <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 whitespace-pre-wrap leading-relaxed">{post.content}</p>
+      )}
 
-          {post.images?.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+      {!isEditing && (
+        isLostFoundWithImage ? (
+          <div className="flex flex-col sm:flex-row gap-5 items-start mb-4">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base font-black mb-1.5 text-gray-900 dark:text-white leading-snug">{post.title}</h3>
+              <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{post.content}</p>
+            </div>
+
+            <div>
               {post.images.map((imgUrl, i) => (
                 <img 
                   key={i} 
                   src={imgUrl.startsWith('http') ? imgUrl : `${import.meta.env.VITE_API_URL}${imgUrl}`} 
-                  alt="attachment preview" 
-                  className="rounded-sm object-contain bg-gray-50 dark:bg-white/5 w-full max-h-72 border border-gray-100 dark:border-white/5 mx-auto" 
+                  alt="lost item full view" 
+                  className="w-full h-auto max-h-60 object-contain rounded-sm mx-auto" 
                 />
               ))}
             </div>
-          )}
-        </>
+          </div>
+        ) : (
+          <>
+            <h3 className="text-base font-black mb-1.5 text-gray-900 dark:text-white">{post.title}</h3>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 whitespace-pre-wrap leading-relaxed">{post.content}</p>
+
+            {post.images?.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+                {post.images.map((imgUrl, i) => (
+                  <img 
+                    key={i} 
+                    src={imgUrl.startsWith('http') ? imgUrl : `${import.meta.env.VITE_API_URL}${imgUrl}`} 
+                    alt="attachment preview" 
+                    className="rounded-sm object-contain bg-gray-50 dark:bg-white/5 w-full max-h-72 border border-gray-100 dark:border-white/5 mx-auto" 
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )
       )}
 
       <div className="flex items-center gap-6 border-t border-gray-100 dark:border-white/5 pt-3 mt-2">

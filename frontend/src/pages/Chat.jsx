@@ -63,6 +63,7 @@ function Chat() {
       if (message.conversation === selectedRef.current?._id) setMessages(previous => previous.some(item => item._id === message._id) ? previous : [...previous, message]);
     });
     socket.on('message:deleted', ({ messageId }) => setMessages(previous => previous.map(message => message._id === messageId ? { ...message, deleted: true, content: '' } : message)));
+    socket.on('message:updated', updatedMessage => setMessages(previous => previous.map(message => message._id === updatedMessage._id ? updatedMessage : message)));
     return () => socket.disconnect();
   }, []);
 
@@ -105,6 +106,15 @@ function Chat() {
   };
 
   const deleteMessage = async messageId => { try { await axios.delete(`${apiUrl}/api/chat/messages/${messageId}`, authConfig()); setMessages(previous => previous.map(message => message._id === messageId ? { ...message, deleted: true, content: '' } : message)); } catch { setError('Unable to delete message.'); } };
+  const editMessage = async (messageId, content) => {
+    try {
+      const { data } = await axios.put(`${apiUrl}/api/chat/messages/${messageId}`, { content }, authConfig());
+      setMessages(previous => previous.map(message => message._id === messageId ? data : message));
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to edit message.');
+      throw err;
+    }
+  };
   const blockUser = async () => {
     if (!selected?.otherUser?._id) return;
     const isBlocked = selected.blockedByMe;
@@ -122,7 +132,7 @@ function Chat() {
 
   return <div className="w-full bg-white/80 dark:bg-[#111]/80 border border-gray-200 dark:border-white/10 rounded-2xl shadow-sm overflow-hidden flex min-h-[calc(100vh-10rem)]">
     {error && <div className="absolute z-10 top-24 left-1/2 -translate-x-1/2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-300 text-xs font-bold px-4 py-2 rounded-lg">{error}</div>}
-    {loading ? <div className="w-full flex items-center justify-center text-sm text-gray-500">Loading conversations...</div> : <><ChatSidebar conversations={conversations} selectedId={selectedId} search={search} onSearch={setSearch} onSelect={setSelectedId} /><ChatWindow conversation={selected} messages={messages} currentUserId={currentUser._id} draft={draft} onDraft={setDraft} onSend={handleSend} onTyping={handleTyping} typingUser={typingUser} online={onlineUsers.has(selected?.otherUser?._id)} connected={connected} loading={messagesLoading} hasMore={hasMore} onLoadMore={loadOlder} onDelete={deleteMessage} onBack={() => setSelectedId(null)} onBlock={blockUser} onReport={reportUser} /></>}
+    {loading ? <div className="w-full flex items-center justify-center text-sm text-gray-500">Loading conversations...</div> : <><ChatSidebar conversations={conversations} selectedId={selectedId} search={search} onSearch={setSearch} onSelect={setSelectedId} /><ChatWindow conversation={selected} messages={messages} currentUserId={currentUser._id} draft={draft} onDraft={setDraft} onSend={handleSend} onTyping={handleTyping} typingUser={typingUser} online={onlineUsers.has(selected?.otherUser?._id)} connected={connected} loading={messagesLoading} hasMore={hasMore} onLoadMore={loadOlder} onEdit={editMessage} onDelete={deleteMessage} onBack={() => setSelectedId(null)} onBlock={blockUser} onReport={reportUser} /></>}
   </div>;
 }
 

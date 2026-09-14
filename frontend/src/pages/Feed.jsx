@@ -91,6 +91,32 @@ function Feed() {
     } catch (error) { console.error(error); }
   };
 
+  const handleEdit = async (postId, postData) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/posts/${postId}`, postData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchPosts();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Unable to edit this post');
+      throw error;
+    }
+  };
+
+  const handleDelete = async (postId) => {
+    if (!window.confirm('Delete this post?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/posts/${postId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPosts(currentPosts => currentPosts.filter(post => post._id !== postId));
+    } catch (error) {
+      alert(error.response?.data?.message || 'Unable to delete this post');
+    }
+  };
+
   if (!user) return null;
 
   return (
@@ -169,8 +195,11 @@ function Feed() {
                 key={post._id} 
                 post={post} 
                 currentUserId={user._id} 
+                currentUser={user}
                 onLike={handleLike} 
                 onComment={handleComment} 
+                onEdit={handleEdit}
+                onDelete={handleDelete}
               />
             ))
           )}

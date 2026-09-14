@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { 
     uploadResource, getResources, toggleResourceUpvote, deleteResource, downloadResource,
-    createJob, getJobs, deleteJob
+    createJob, getJobs, deleteJob, updateJob, updateResource
 } = require('../controllers/hubController');
 const { 
     requestAccountCreation, requestPasswordReset, 
@@ -19,6 +19,7 @@ router.route('/resources')
 
 router.get('/resources/download/:id', downloadResource);
 router.delete('/resources/:id', protect, deleteResource);
+router.put('/resources/:id', protect, admin, upload.single('file'), updateResource);
 router.put('/resources/:id/upvote', protect, toggleResourceUpvote);
 
 // Placements Cell Routes
@@ -27,6 +28,7 @@ router.route('/jobs')
     .post(protect, admin, createJob);
 
 router.delete('/jobs/:id', protect, admin, deleteJob);
+router.put('/jobs/:id', protect, admin, updateJob);
 
 // Public Routes 
 router.post('/requests/account', requestAccountCreation);

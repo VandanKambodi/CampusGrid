@@ -76,6 +76,25 @@ function Vault() {
     }
   };
 
+  const handleEdit = async (id, resourceData) => {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    Object.entries(resourceData).forEach(([key, value]) => formData.append(key, value));
+    await axios.put(`${import.meta.env.VITE_API_URL}/api/hub/resources/${id}`, formData, { headers: { Authorization: `Bearer ${token}` } });
+    fetchResources();
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this resource?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/hub/resources/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      setResources(currentResources => currentResources.filter(resource => resource._id !== id));
+    } catch (error) {
+      alert(error.response?.data?.message || 'Unable to delete this resource');
+    }
+  };
+
   if (!user) return null;
 
   return (
@@ -168,6 +187,9 @@ function Vault() {
                 resource={res} 
                 currentUserId={user._id} 
                 onUpvote={handleUpvote} 
+                isAdmin={user.role === 'admin' || user.isAdmin}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
               />
             ))
           ) : (
