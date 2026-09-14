@@ -41,7 +41,7 @@ const updateUserProfile = async (req, res) => {
 
 const getAllStudents = async (req, res) => {
     try {
-        const students = await User.find({}).select('-password');
+        const students = await User.find({}).select('-password -blockedUsers');
         res.json(students);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -57,7 +57,7 @@ const searchUsers = async (req, res) => {
     } : {};
 
     try {
-        const users = await User.find({ ...keyword, _id: { $ne: req.user._id } }).select('-password');
+        const users = await User.find({ ...keyword, _id: { $ne: req.user._id } }).select('-password -blockedUsers');
         res.json(users);
     } catch (error) {
         res.status(500).json({ message: 'Error searching users' });
@@ -66,7 +66,7 @@ const searchUsers = async (req, res) => {
 
 const getUserById = async (req, res) => {
     try {
-        const user = await User.findById(req.params.id).select('-password');
+        const user = await User.findById(req.params.id).select('-password -blockedUsers');
         if (user) {
             const userPosts = await Post.find({ author: user._id }).sort({ createdAt: -1 });
             res.json({ profile: user, posts: userPosts });

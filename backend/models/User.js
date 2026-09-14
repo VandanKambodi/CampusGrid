@@ -43,7 +43,8 @@ const userSchema = new mongoose.Schema({
     },
     // --- FOLLOW SYSTEM ---
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
+    following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
 }, { timestamps: true });
 
 // Hash password before saving
