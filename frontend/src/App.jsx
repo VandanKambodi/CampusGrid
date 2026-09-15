@@ -12,6 +12,8 @@ import Vault from './pages/Vault';
 import Placements from './pages/Placements';
 import AdminDashboard from './pages/AdminDashboard';
 import Chat from './pages/Chat';
+import Calendar from './pages/Calendar';
+import AdminEvents from './pages/AdminEvents';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -79,8 +81,10 @@ function App() {
               <Route path="network" element={<CampusNetwork />} />
               <Route path="placements" element={<Placements />} />
               <Route path="chat" element={<StudentChatRoute />} />
+              <Route path="calendar" element={<Calendar />} />
 
               <Route path="admin" element={<AdminDashboard />} />
+              <Route path="admin/events" element={<AdminEvents />} />
             </Route>
           </Routes>
         </Router>

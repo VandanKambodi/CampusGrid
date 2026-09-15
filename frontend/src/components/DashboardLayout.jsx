@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, Home, Search as SearchIcon, BookOpen, Users, Briefcase, Bell, User as UserIcon, Sun, Moon, Menu, X, ShieldAlert, MessageCircle } from 'lucide-react';
+import { LogOut, Home, Search as SearchIcon, BookOpen, Users, Briefcase, Bell, User as UserIcon, Sun, Moon, Menu, X, ShieldAlert, MessageCircle, CalendarDays } from 'lucide-react';
 import axios from 'axios';
 
 function DashboardLayout({ toggleTheme, theme }) {
@@ -171,10 +171,18 @@ function DashboardLayout({ toggleTheme, theme }) {
             {user.role !== 'admin' && <Link onClick={() => setIsMobileMenuOpen(false)} to="/hub/chat" className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-sm text-xs font-extrabold transition-all ${isActive('/chat') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'hover:bg-gray-100 dark:hover:bg-white/5 text-gray-600 dark:text-gray-400'}`}>
               <MessageCircle className="w-4 h-4" /> Chat {unreadChatCount > 0 && <span className="ml-auto min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">{unreadChatCount}</span>}
             </Link>}
+            <Link onClick={() => setIsMobileMenuOpen(false)} to="/hub/calendar" className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-sm text-xs font-extrabold transition-all ${isActive('/calendar') ? 'bg-cyan-600 text-white shadow-md shadow-cyan-500/20' : 'hover:bg-gray-100 dark:hover:bg-white/5 text-gray-600 dark:text-gray-400'}`}>
+              <CalendarDays className="w-4 h-4" /> Calendar
+            </Link>
             {user.role === 'admin' && (
-              <Link onClick={() => setIsMobileMenuOpen(false)} to="/hub/admin" className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-sm text-xs font-extrabold transition-all ${isActive('/admin') ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' : 'hover:bg-purple-50 dark:hover:bg-purple-500/10 text-purple-600 dark:text-purple-400'}`}>
+              <>
+              <Link onClick={() => setIsMobileMenuOpen(false)} to="/hub/admin/events" className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-sm text-xs font-extrabold transition-all ${isActive('/admin/events') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/10'}`}>
+                <CalendarDays className="w-4 h-4" /> Events Management
+              </Link>
+              <Link onClick={() => setIsMobileMenuOpen(false)} to="/hub/admin" className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-sm text-xs font-extrabold transition-all ${location.pathname === '/hub/admin' ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' : 'hover:bg-purple-50 dark:hover:bg-purple-500/10 text-purple-600 dark:text-purple-400'}`}>
                 <ShieldAlert className="w-4 h-4" /> Admin Console
               </Link>
+              </>
             )}
           </div>
           
