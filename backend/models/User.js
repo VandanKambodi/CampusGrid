@@ -41,6 +41,18 @@ const userSchema = new mongoose.Schema({
         type: String, 
         default: 'https://img.freepik.com/premium-vector/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-vector-illustration_561158-3485.jpg'
     },
+    portfolioUrl: {
+        type: String,
+        default: ''
+    },
+    linkedinUrl: {
+        type: String,
+        default: ''
+    },
+    githubUrl: {
+        type: String,
+        default: ''
+    },
     // --- FOLLOW SYSTEM ---
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],

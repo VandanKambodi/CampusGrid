@@ -6,6 +6,7 @@ const {
     getAllStudents, 
     searchUsers,
     getUserById,
+    getUserFollowList,
     toggleFollowUser
 } = require('../controllers/userController');
 const { protect } = require('../middlewares/authMiddleware');
@@ -20,6 +21,9 @@ router.get('/search', protect, searchUsers);
 router.route('/profile')
     .get(protect, getUserProfile)
     .put(protect, updateUserProfile);
+
+router.get('/:id/followers', protect, getUserFollowList);
+router.get('/:id/following', protect, getUserFollowList);
 
 // Get another user's public profile
 router.get('/:id', protect, getUserById);

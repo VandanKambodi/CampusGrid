@@ -1,7 +1,21 @@
 import { useEffect, useState } from 'react';
-import { Code, FolderGit2, X, Loader2, Plus, Sparkles } from 'lucide-react';
+import { Code, FolderGit2, X, Loader2, Plus, Sparkles, Briefcase, Globe, Users, UserMinus, UserPlus, ExternalLink } from 'lucide-react';
 import axios from 'axios';
 import Loader from '../components/Loader';
+
+const safeExternalLink = (value) => {
+  if (!value || typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+    return trimmed;
+  } catch {
+    return null;
+  }
+};
 
 function Profile() {
   const [profile, setProfile] = useState(null);
@@ -9,6 +23,13 @@ function Profile() {
   const [isSaving, setIsSaving] = useState(false);
   const [techStackInput, setTechStackInput] = useState('');
   const [projects, setProjects] = useState([]);
+  const [portfolioUrl, setPortfolioUrl] = useState('');
+  const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [githubUrl, setGithubUrl] = useState('');
+  const [activeFollowList, setActiveFollowList] = useState(null);
+  const [followEntries, setFollowEntries] = useState([]);
+  const [listLoading, setListLoading] = useState(false);
+  const [listError, setListError] = useState('');
 
   useEffect(() => {
     fetchProfile();
@@ -21,8 +42,53 @@ function Profile() {
       setProfile(data);
       setTechStackInput(data.techStack?.join(', ') || '');
       setProjects(data.projects || []);
+      setPortfolioUrl(data.portfolioUrl || '');
+      setLinkedinUrl(data.linkedinUrl || '');
+      setGithubUrl(data.githubUrl || '');
     } catch (error) { 
       console.error("Error fetching profile:", error); 
+    }
+  };
+
+  const openFollowList = async (listType) => {
+    if (!profile?._id) return;
+    setActiveFollowList(listType);
+    setListLoading(true);
+    setListError('');
+    try {
+      const token = localStorage.getItem('token');
+      const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/${profile._id}/${listType}`, { headers: { Authorization: `Bearer ${token}` } });
+      const entries = listType === 'followers' ? data.followers || [] : data.following || [];
+      setFollowEntries(entries);
+    } catch (error) {
+      console.error('Error fetching follow list', error);
+      setListError('Unable to load this list right now.');
+      setFollowEntries([]);
+    } finally {
+      setListLoading(false);
+    }
+  };
+
+  const handleUnfollowFromList = async (userId) => {
+    if (!profile?._id || !userId) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const previousFollowing = [...(profile.following || [])];
+      const previousList = [...followEntries];
+
+      setProfile((prev) => ({
+        ...prev,
+        following: (prev?.following || []).filter((id) => id !== userId)
+      }));
+      setFollowEntries((prev) => prev.filter((user) => user._id !== userId));
+
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/users/${userId}/follow`, {}, { headers: { Authorization: `Bearer ${token}` } });
+    } catch (error) {
+      console.error('Failed to unfollow user', error);
+      setProfile((prev) => ({ ...prev, following: previousFollowing }));
+      setFollowEntries(previousList);
+      setListError('Could not unfollow this user. Please try again.');
     }
   };
 
@@ -31,7 +97,8 @@ function Profile() {
     try {
       const token = localStorage.getItem('token');
       const techStackArray = techStackInput.split(',').map(item => item.trim()).filter(Boolean);
-      const { data } = await axios.put(`${import.meta.env.VITE_API_URL}/api/users/profile`, { techStack: techStackArray, projects }, { headers: { Authorization: `Bearer ${token}` } });
+      const payload = { techStack: techStackArray, projects, portfolioUrl, linkedinUrl, githubUrl };
+      const { data } = await axios.put(`${import.meta.env.VITE_API_URL}/api/users/profile`, payload, { headers: { Authorization: `Bearer ${token}` } });
       setProfile(prev => ({ ...prev, ...data }));
       setIsEditing(false);
     } catch { 
@@ -48,24 +115,58 @@ function Profile() {
     setProjects(updated); 
   };
 
+  const linkedProfiles = [
+    { key: 'portfolio', label: 'Portfolio', emoji: '🔗', url: safeExternalLink(profile?.portfolioUrl) },
+    { key: 'linkedin', label: 'LinkedIn', emoji: '💼', url: safeExternalLink(profile?.linkedinUrl) },
+    { key: 'github', label: 'GitHub', emoji: '🐙', url: safeExternalLink(profile?.githubUrl) }
+  ].filter(item => item.url);
+
   if (!profile) return <Loader text="Loading personal profile..." />;
 
   return (
     <div className="w-full space-y-6">
       <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-md p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
           <img 
             src={profile.profilePicture || "https://img.freepik.com/premium-vector/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-vector-illustration_561158-3485.jpg"} 
             alt="Profile" 
             className="w-16 h-16 md:w-20 md:h-20 rounded-full border border-gray-200 dark:border-white/10 object-cover bg-gray-200 shadow-sm shrink-0" 
           />
-          <div>
+          <div className="min-w-0 flex-1">
             <h1 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white mb-1">{profile.name}</h1>
-            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-bold flex items-center gap-2">
+            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-bold flex flex-wrap items-center gap-2">
               <span>Roll No: {profile.rollNo}</span>
               <span>•</span>
               <span>{profile.course || "B.Tech"} {profile.branch || "CSE"}</span>
             </p>
+
+            {linkedProfiles.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                {linkedProfiles.map(({ key, label, emoji, url }) => (
+                  <a
+                    key={key}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 transition-colors"
+                  >
+                    <span>{emoji}</span>
+                    {label}
+                  </a>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-3 flex flex-wrap items-center gap-4 text-xs">
+              <button type="button" onClick={() => openFollowList('followers')} className="inline-flex items-center gap-1.5 font-bold text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                <Users className="w-3.5 h-3.5" />
+                <span>{profile.followers?.length || 0} Followers</span>
+              </button>
+              <button type="button" onClick={() => openFollowList('following')} className="inline-flex items-center gap-1.5 font-bold text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>{profile.following?.length || 0} Following</span>
+              </button>
+            </div>
           </div>
         </div>
         <button 
@@ -81,21 +182,91 @@ function Profile() {
         </button>
       </div>
 
+      {activeFollowList && (
+        <div className="fixed inset-0 bg-black/55 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-xl w-full max-w-xl max-h-[75vh] overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-white/10">
+              <h3 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-wider">
+                {activeFollowList === 'followers' ? 'Followers' : 'Following'}
+              </h3>
+              <button onClick={() => setActiveFollowList(null)} className="text-gray-500 hover:text-gray-800 dark:hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 overflow-y-auto max-h-[calc(75vh-72px)]">
+              {listLoading ? (
+                <div className="py-10"><Loader text={activeFollowList === 'followers' ? 'Loading followers...' : 'Loading following...'} /></div>
+              ) : listError ? (
+                <div className="text-xs text-red-500 font-semibold py-6 text-center">{listError}</div>
+              ) : followEntries.length === 0 ? (
+                <div className="py-10 text-center text-sm text-gray-500 dark:text-gray-400 font-semibold">
+                  {activeFollowList === 'followers' ? 'No followers yet.' : 'Not following anyone yet.'}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {followEntries.map((user) => (
+                    <div key={user._id} className="flex items-center justify-between gap-3 rounded-md border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 p-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img src={user.profilePicture || 'https://img.freepik.com/premium-vector/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-vector-illustration_561158-3485.jpg'} alt={user.name} className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-white/10" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-black text-gray-900 dark:text-white truncate">{user.name}</p>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium truncate">{user.rollNo || 'N/A'} • {user.branch || user.course || 'Student'}</p>
+                          <a href={`/hub/student/${user._id}`} className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mt-1">
+                            View Profile <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                      </div>
+
+                      {activeFollowList === 'following' && (
+                        <button
+                          type="button"
+                          onClick={() => handleUnfollowFromList(user._id)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-[10px] font-black uppercase tracking-wider transition-colors hover:bg-red-100 dark:hover:bg-red-500/20"
+                        >
+                          <UserMinus className="w-3.5 h-3.5" /> Unfollow
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-6">
-          {/* Tech Stack */}
           <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-md p-6 shadow-sm">
             <h3 className="text-xs font-black mb-4 flex items-center gap-2 text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
               <Code className="w-4 h-4" /> Technical Stack
             </h3>
             {isEditing ? (
-              <textarea 
-                value={techStackInput} 
-                onChange={(e) => setTechStackInput(e.target.value)} 
-                placeholder="React, Node.js, Express, MongoDB, Tailwind..." 
-                className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 dark:text-white rounded-sm p-3 text-xs font-semibold outline-none focus:border-indigo-500 transition-colors" 
-                rows="3" 
-              />
+              <div className="space-y-4">
+                <textarea 
+                  value={techStackInput} 
+                  onChange={(e) => setTechStackInput(e.target.value)} 
+                  placeholder="React, Node.js, Express, MongoDB, Tailwind..." 
+                  className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 dark:text-white rounded-sm p-3 text-xs font-semibold outline-none focus:border-indigo-500 transition-colors" 
+                  rows="3" 
+                />
+
+                <div className="grid gap-3">
+                  <label className="space-y-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">Portfolio URL</span>
+                    <input value={portfolioUrl} onChange={(e) => setPortfolioUrl(e.target.value)} type="url" placeholder="https://yourportfolio.com" className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 dark:text-white rounded-sm px-3 py-2 text-xs outline-none focus:border-indigo-500" />
+                  </label>
+                  <label className="space-y-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">LinkedIn URL</span>
+                    <input value={linkedinUrl} onChange={(e) => setLinkedinUrl(e.target.value)} type="url" placeholder="https://linkedin.com/in/yourname" className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 dark:text-white rounded-sm px-3 py-2 text-xs outline-none focus:border-indigo-500" />
+                  </label>
+                  <label className="space-y-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">GitHub URL</span>
+                    <input value={githubUrl} onChange={(e) => setGithubUrl(e.target.value)} type="url" placeholder="https://github.com/yourname" className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 dark:text-white rounded-sm px-3 py-2 text-xs outline-none focus:border-indigo-500" />
+                  </label>
+                </div>
+              </div>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {profile.techStack?.length > 0 ? (
@@ -111,7 +282,6 @@ function Profile() {
             )}
           </div>
 
-          {/* Projects */}
           <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-md p-6 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xs font-black flex items-center gap-2 text-cyan-600 dark:text-cyan-400 uppercase tracking-wider">
@@ -187,7 +357,6 @@ function Profile() {
           </div>
         </div>
 
-        {/* Activity Timeline */}
         <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-md p-6 shadow-sm h-fit">
           <h3 className="text-xs font-black mb-5 flex items-center gap-2 uppercase tracking-wider text-gray-900 dark:text-gray-100">
             <Sparkles className="w-4 h-4 text-amber-500" /> Recent Campus Activity

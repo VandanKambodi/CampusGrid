@@ -1,8 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Code, FolderGit2, ArrowLeft, UserPlus, UserCheck, Sparkles, MessageCircle } from 'lucide-react';
+import { Code, FolderGit2, ArrowLeft, UserPlus, UserCheck, Sparkles, MessageCircle, Briefcase, ExternalLink } from 'lucide-react';
 import axios from 'axios';
 import Loader from '../components/Loader';
+
+const safeExternalLink = (value) => {
+  if (!value || typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+    return trimmed;
+  } catch {
+    return null;
+  }
+};
 
 function PublicProfile() {
   const { id } = useParams();
@@ -45,6 +59,12 @@ function PublicProfile() {
     }
   };
 
+  const linkedProfiles = [
+    { key: 'portfolio', label: 'Portfolio', emoji: '🔗', url: safeExternalLink(profile?.portfolioUrl) },
+    { key: 'linkedin', label: 'LinkedIn', emoji: '💼', url: safeExternalLink(profile?.linkedinUrl) },
+    { key: 'github', label: 'GitHub', emoji: '🐙', url: safeExternalLink(profile?.githubUrl) }
+  ].filter(item => item.url);
+
   if (!profile) return <Loader text="Loading peer profile..." />;
 
   return (
@@ -71,6 +91,15 @@ function PublicProfile() {
                 <span>•</span>
                 <span>{profile.course || "B.Tech"} {profile.branch || "CSE"}</span>
               </p>
+              {linkedProfiles.length > 0 && (
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  {linkedProfiles.map(({ key, label, emoji, url }) => (
+                    <a key={key} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 transition-colors">
+                      <span>{emoji}</span> {label}
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           
@@ -95,7 +124,6 @@ function PublicProfile() {
           </div>
         </div>
         
-        {/* Followers & Following Counters */}
         <div className="flex gap-4 text-xs border-t border-gray-100 dark:border-white/5 pt-4">
           <div className="p-2">
             <span className="font-black text-sm text-gray-900 dark:text-white mr-1.5">{profile.followers?.length || 0}</span> 
@@ -110,7 +138,6 @@ function PublicProfile() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-6">
-          {/* Tech Stack */}
           <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-md p-6 shadow-sm">
             <h3 className="text-xs font-black mb-4 flex items-center gap-2 text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
               <Code className="w-4 h-4" /> Technical Stack
@@ -128,7 +155,6 @@ function PublicProfile() {
             </div>
           </div>
 
-          {/* Projects */}
           <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-md p-6 shadow-sm">
             <h3 className="text-xs font-black mb-4 flex items-center gap-2 text-cyan-600 dark:text-cyan-400 uppercase tracking-wider">
               <FolderGit2 className="w-4 h-4" /> Project Portfolio
@@ -158,7 +184,6 @@ function PublicProfile() {
           </div>
         </div>
 
-        {/* Activity Feed */}
         <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-md p-6 shadow-sm h-fit">
           <h3 className="text-xs font-black mb-5 flex items-center gap-2 uppercase tracking-wider text-gray-900 dark:text-gray-100">
             <Sparkles className="w-4 h-4 text-amber-500" /> Published Activity
