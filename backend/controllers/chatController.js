@@ -174,7 +174,7 @@ const deleteMessage = async (req, res) => {
         const message = await Message.findOne({ _id: req.params.messageId, sender: req.user._id });
         if (!message) return res.status(404).json({ message: 'Message not found or not owned by you' });
         message.deleted = true;
-        message.content = '';
+        message.content = 'Message deleted';
         await message.save();
         const io = req.app.get('io');
         if (io) io.to(`conversation:${message.conversation}`).emit('message:deleted', { messageId: message._id, conversationId: message.conversation });
