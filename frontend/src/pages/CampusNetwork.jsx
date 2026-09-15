@@ -208,24 +208,26 @@ function CampusNetwork() {
                 </div>
 
                 <div className="flex items-center gap-2 pt-3 border-t border-gray-100 dark:border-white/5 mt-2">
-                  <button
-                    onClick={() => handleFollowToggle(student._id)}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      isFollowing 
-                        ? 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200' 
-                        : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm'
-                    }`}
-                  >
-                    {isFollowing ? (
-                      <>
-                        <UserCheck className="w-3.5 h-3.5 text-green-500" /> Following
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="w-3.5 h-3.5" /> Follow
-                      </>
-                    )}
-                  </button>
+                  {currentUser.role !== 'admin' && (
+                    <button
+                      onClick={() => handleFollowToggle(student._id)}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        isFollowing 
+                          ? 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200' 
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm'
+                      }`}
+                    >
+                      {isFollowing ? (
+                        <>
+                          <UserCheck className="w-3.5 h-3.5 text-green-500" /> Following
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="w-3.5 h-3.5" /> Follow
+                        </>
+                      )}
+                    </button>
+                  )}
 
                   <Link 
                     to={`/hub/student/${student._id}`}

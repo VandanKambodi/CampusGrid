@@ -23,6 +23,7 @@ function PublicProfile() {
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [profileError, setProfileError] = useState('');
   const navigate = useNavigate();
   const currentUser = JSON.parse(localStorage.getItem('userInfo') || '{}');
   const isOwnProfile = currentUser._id === id;
@@ -39,6 +40,7 @@ function PublicProfile() {
       const userInfo = JSON.parse(localStorage.getItem('userInfo'));
       if (data.profile.followers?.includes(userInfo._id)) setIsFollowing(true);
     } catch (error) { 
+      setProfileError(error.response?.status === 404 ? 'Profile not found.' : 'Unable to load this profile.');
       console.error("Error fetching peer profile:", error); 
     }
   }
@@ -65,7 +67,15 @@ function PublicProfile() {
     { key: 'github', label: 'GitHub', emoji: '🐙', url: safeExternalLink(profile?.githubUrl) }
   ].filter(item => item.url);
 
-  if (!profile) return <Loader text="Loading peer profile..." />;
+  if (!profile) {
+    return profileError ? (
+      <div className="max-w-xl mx-auto text-center py-16 space-y-3">
+        <h1 className="text-xl font-black text-gray-900 dark:text-white">{profileError}</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400">This profile is unavailable.</p>
+        <Link to="/hub/network" className="inline-flex text-xs font-black text-indigo-600 dark:text-indigo-400 hover:underline">Return to Campus Network</Link>
+      </div>
+    ) : <Loader text="Loading peer profile..." />;
+  }
 
   return (
     <div className="space-y-6 w-full">
@@ -111,7 +121,7 @@ function PublicProfile() {
           >
             <MessageCircle className="w-4 h-4" /> Message
           </button>}
-          {!isOwnProfile && <button 
+          {!isOwnProfile && currentUser.role !== 'admin' && <button 
             onClick={handleFollow} 
             className={`px-4 py-2.5 rounded-sm cursor-pointer text-xs font-black flex items-center justify-center gap-2 transition-all shadow-sm ${
               isFollowing 

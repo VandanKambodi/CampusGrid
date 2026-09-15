@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Code, FolderGit2, X, Loader2, Plus, Sparkles, Briefcase, Globe, Users, UserMinus, UserPlus, ExternalLink } from 'lucide-react';
 import axios from 'axios';
 import Loader from '../components/Loader';
+import AdminProfile from '../components/AdminProfile';
 
 const safeExternalLink = (value) => {
   if (!value || typeof value !== 'string') return null;
@@ -72,10 +73,11 @@ function Profile() {
   const handleUnfollowFromList = async (userId) => {
     if (!profile?._id || !userId) return;
 
+    const previousFollowing = [...(profile.following || [])];
+    const previousList = [...followEntries];
+
     try {
       const token = localStorage.getItem('token');
-      const previousFollowing = [...(profile.following || [])];
-      const previousList = [...followEntries];
 
       setProfile((prev) => ({
         ...prev,
@@ -122,6 +124,9 @@ function Profile() {
   ].filter(item => item.url);
 
   if (!profile) return <Loader text="Loading personal profile..." />;
+  if (profile.role === 'admin') {
+    return <AdminProfile profile={profile} onProfileUpdated={(updatedProfile) => setProfile(prev => ({ ...prev, ...updatedProfile }))} />;
+  }
 
   return (
     <div className="w-full space-y-6">

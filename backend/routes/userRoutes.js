@@ -7,9 +7,10 @@ const {
     searchUsers,
     getUserById,
     getUserFollowList,
-    toggleFollowUser
+    toggleFollowUser,
+    getAdminAnalytics
 } = require('../controllers/userController');
-const { protect } = require('../middlewares/authMiddleware');
+const { protect, admin } = require('../middlewares/authMiddleware');
 
 // Get all students 
 router.get('/', protect, getAllStudents);
@@ -21,6 +22,8 @@ router.get('/search', protect, searchUsers);
 router.route('/profile')
     .get(protect, getUserProfile)
     .put(protect, updateUserProfile);
+
+router.get('/admin/analytics', protect, admin, getAdminAnalytics);
 
 router.get('/:id/followers', protect, getUserFollowList);
 router.get('/:id/following', protect, getUserFollowList);

@@ -1,5 +1,9 @@
 const User = require('../models/User');
 const Post = require('../models/Post');
+const Resource = require('../models/Resource');
+const Job = require('../models/Job');
+const Request = require('../models/Request');
+const Event = require('../models/Event');
 
 const isSafeHttpUrl = (value) => {
     if (!value || typeof value !== 'string') return false;
@@ -31,12 +35,29 @@ const sanitizeProfileUrl = (value, hostPattern) => {
     return trimmed;
 };
 
+const sanitizeNetworkRelationships = async (user) => {
+    const profile = { ...user._doc };
+
+    if (user.role === 'admin') {
+        delete profile.followers;
+        delete profile.following;
+        return profile;
+    }
+
+    const adminIds = await User.find({ role: 'admin' }).distinct('_id');
+    const adminIdSet = new Set(adminIds.map(id => id.toString()));
+    profile.followers = (user.followers || []).filter(id => !adminIdSet.has(id.toString()));
+    profile.following = (user.following || []).filter(id => !adminIdSet.has(id.toString()));
+    return profile;
+};
+
 const getUserProfile = async (req, res) => {
     try {
         const user = await User.findById(req.user._id).select('-password');
         if (user) {
             const userPosts = await Post.find({ author: user._id }).sort({ createdAt: -1 });
-            res.json({ ...user._doc, posts: userPosts });
+            const profile = await sanitizeNetworkRelationships(user);
+            res.json({ ...profile, posts: userPosts });
         } else {
             res.status(404).json({ message: 'User not found' });
         }
@@ -75,7 +96,7 @@ const updateUserProfile = async (req, res) => {
 
 const getAllStudents = async (req, res) => {
     try {
-        const students = await User.find({}).select('-password -blockedUsers');
+        const students = await User.find({ role: 'student' }).select('-password -blockedUsers');
         res.json(students);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -91,7 +112,7 @@ const searchUsers = async (req, res) => {
     } : {};
 
     try {
-        const users = await User.find({ ...keyword, _id: { $ne: req.user._id } }).select('-password -blockedUsers');
+        const users = await User.find({ ...keyword, role: 'student', _id: { $ne: req.user._id } }).select('-password -blockedUsers');
         res.json(users);
     } catch (error) {
         res.status(500).json({ message: 'Error searching users' });
@@ -101,9 +122,13 @@ const searchUsers = async (req, res) => {
 const getUserById = async (req, res) => {
     try {
         const user = await User.findById(req.params.id).select('-password -blockedUsers');
+        if (user?.role === 'admin' && req.user.role !== 'admin') {
+            return res.status(404).json({ message: 'User not found' });
+        }
         if (user) {
             const userPosts = await Post.find({ author: user._id }).sort({ createdAt: -1 });
-            res.json({ profile: user, posts: userPosts });
+            const profile = await sanitizeNetworkRelationships(user);
+            res.json({ profile, posts: userPosts });
         } else {
             res.status(404).json({ message: 'User not found' });
         }
@@ -114,19 +139,24 @@ const getUserById = async (req, res) => {
 
 const getUserFollowList = async (req, res) => {
     try {
+        const targetUser = await User.findById(req.params.id).select('role');
+        if (!targetUser || targetUser.role === 'admin') {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
         const user = await User.findById(req.params.id).select('followers following').populate({
             path: 'followers',
-            select: 'name rollNo branch course profilePicture'
+            select: 'name rollNo branch course profilePicture role'
         }).populate({
             path: 'following',
-            select: 'name rollNo branch course profilePicture'
+            select: 'name rollNo branch course profilePicture role'
         });
 
         if (!user) return res.status(404).json({ message: 'User not found' });
 
         return res.json({
-            followers: user.followers || [],
-            following: user.following || []
+            followers: (user.followers || []).filter(follower => follower.role === 'student'),
+            following: (user.following || []).filter(following => following.role === 'student')
         });
     } catch (error) {
         res.status(500).json({ message: 'Error fetching follow list' });
@@ -144,6 +174,9 @@ const toggleFollowUser = async (req, res) => {
 
         if (!targetUser) return res.status(404).json({ message: 'User not found' });
         if (!currentUser) return res.status(404).json({ message: 'Current user not found' });
+        if (targetUser.role === 'admin' || currentUser.role === 'admin') {
+            return res.status(400).json({ message: 'System accounts cannot be followed.' });
+        }
         if (targetUser._id.toString() === currentUser._id.toString()) {
             return res.status(400).json({ message: 'You cannot follow yourself' });
         }
@@ -171,6 +204,33 @@ const toggleFollowUser = async (req, res) => {
     }
 };
 
+const getAdminAnalytics = async (req, res) => {
+    try {
+        const [totalStudents, totalPosts, totalResources, totalJobs, totalRequests, totalEvents, adminPosts] = await Promise.all([
+            User.countDocuments({ role: 'student' }),
+            Post.countDocuments(),
+            Resource.countDocuments(),
+            Job.countDocuments(),
+            Request.countDocuments(),
+            Event.countDocuments(),
+            Post.find({ author: req.user._id }).sort({ createdAt: -1 })
+        ]);
+
+        res.json({
+            totalStudents,
+            totalPosts,
+            totalResources,
+            totalJobs,
+            totalRequests,
+            totalEvents,
+            totalCampusActivity: totalPosts + totalEvents,
+            adminPosts
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching admin analytics' });
+    }
+};
+
 module.exports = {
     getUserProfile,
     updateUserProfile,
@@ -178,5 +238,6 @@ module.exports = {
     searchUsers,
     getUserById,
     getUserFollowList,
-    toggleFollowUser
+    toggleFollowUser,
+    getAdminAnalytics
 };
