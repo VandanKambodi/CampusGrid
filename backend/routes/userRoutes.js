@@ -7,10 +7,10 @@ const {
     searchUsers,
     getUserById,
     getUserFollowList,
-    toggleFollowUser,
-    getAdminAnalytics
+    toggleFollowUser
 } = require('../controllers/userController');
 const { protect, admin } = require('../middlewares/authMiddleware');
+const { getAdminAnalytics: getAdminAnalyticsDashboard } = require('../controllers/adminAnalyticsController');
 
 // Get all students 
 router.get('/', protect, getAllStudents);
@@ -23,7 +23,7 @@ router.route('/profile')
     .get(protect, getUserProfile)
     .put(protect, updateUserProfile);
 
-router.get('/admin/analytics', protect, admin, getAdminAnalytics);
+router.get('/admin/analytics', protect, admin, getAdminAnalyticsDashboard);
 
 router.get('/:id/followers', protect, getUserFollowList);
 router.get('/:id/following', protect, getUserFollowList);

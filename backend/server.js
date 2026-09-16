@@ -37,6 +37,7 @@ app.use('/api/hub', require('./routes/hubRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/events', require('./routes/eventRoutes'));
 app.use('/api', require('./routes/contentRoutes'));
+app.use('/api/admin', require('./routes/adminAnalyticsRoutes'));
 
 // Global error handler (handles Multer file limit errors)
 app.use((err, req, res, next) => {
