@@ -14,6 +14,8 @@ import AdminDashboard from './pages/AdminDashboard';
 import Chat from './pages/Chat';
 import Calendar from './pages/Calendar';
 import AdminEvents from './pages/AdminEvents';
+import PollsAndSurveys from './pages/PollsAndSurveys';
+import AdminContent from './pages/AdminContent';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -37,6 +39,11 @@ const ProtectedRoute = ({ children }) => {
 const StudentChatRoute = () => {
   const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
   return userInfo.role === 'admin' ? <Navigate to="/hub/admin" replace /> : <Chat />;
+};
+
+const StudentPollsRoute = () => {
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+  return userInfo.role === 'admin' ? <Navigate to="/hub/admin" replace /> : <PollsAndSurveys />;
 };
 
 function App() {
@@ -82,9 +89,11 @@ function App() {
               <Route path="placements" element={<Placements />} />
               <Route path="chat" element={<StudentChatRoute />} />
               <Route path="calendar" element={<Calendar />} />
+              <Route path="polls" element={<StudentPollsRoute />} />
 
               <Route path="admin" element={<AdminDashboard />} />
               <Route path="admin/events" element={<AdminEvents />} />
+              <Route path="admin/content" element={<AdminContent />} />
             </Route>
           </Routes>
         </Router>

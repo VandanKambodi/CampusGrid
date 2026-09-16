@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, Home, Search as SearchIcon, BookOpen, Users, Briefcase, Bell, User as UserIcon, Sun, Moon, Menu, X, ShieldAlert, MessageCircle, CalendarDays } from 'lucide-react';
+import { LogOut, Home, Search as SearchIcon, BookOpen, Users, Briefcase, Bell, User as UserIcon, Sun, Moon, Menu, X, ShieldAlert, MessageCircle, CalendarDays, Vote, ClipboardList, MessageSquareText } from 'lucide-react';
 import axios from 'axios';
 
 function DashboardLayout({ toggleTheme, theme }) {
@@ -174,10 +174,18 @@ function DashboardLayout({ toggleTheme, theme }) {
             <Link onClick={() => setIsMobileMenuOpen(false)} to="/hub/calendar" className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-sm text-xs font-extrabold transition-all ${isActive('/calendar') ? 'bg-cyan-600 text-white shadow-md shadow-cyan-500/20' : 'hover:bg-gray-100 dark:hover:bg-white/5 text-gray-600 dark:text-gray-400'}`}>
               <CalendarDays className="w-4 h-4" /> Calendar
             </Link>
+            {user.role !== 'admin' && (
+              <Link onClick={() => setIsMobileMenuOpen(false)} to="/hub/polls" className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-sm text-xs font-extrabold transition-all ${isActive('/polls') ? 'bg-violet-600 text-white shadow-md shadow-violet-500/20' : 'hover:bg-gray-100 dark:hover:bg-white/5 text-gray-600 dark:text-gray-400'}`}>
+                <Vote className="w-4 h-4" /> Polls & Surveys
+              </Link>
+            )}
             {user.role === 'admin' && (
               <>
               <Link onClick={() => setIsMobileMenuOpen(false)} to="/hub/admin/events" className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-sm text-xs font-extrabold transition-all ${isActive('/admin/events') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/10'}`}>
                 <CalendarDays className="w-4 h-4" /> Events Management
+              </Link>
+              <Link onClick={() => setIsMobileMenuOpen(false)} to="/hub/admin/content" className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-sm text-xs font-extrabold transition-all ${isActive('/admin/content') ? 'bg-violet-600 text-white shadow-md shadow-violet-500/20' : 'text-violet-600 hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-500/10'}`}>
+                <Vote className="w-4 h-4" /> Polls & Surveys
               </Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} to="/hub/admin" className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-sm text-xs font-extrabold transition-all ${location.pathname === '/hub/admin' ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' : 'hover:bg-purple-50 dark:hover:bg-purple-500/10 text-purple-600 dark:text-purple-400'}`}>
                 <ShieldAlert className="w-4 h-4" /> Admin Console

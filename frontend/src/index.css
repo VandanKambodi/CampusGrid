@@ -17,3 +17,7 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.dark .content-select {
+  color-scheme: dark;
+}
