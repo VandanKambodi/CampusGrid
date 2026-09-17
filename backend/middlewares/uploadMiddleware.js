@@ -49,10 +49,22 @@ if (isCloudinaryConfigured) {
     });
 }
 
+const fileFilter = (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (ext === '.pdf' || file.mimetype === 'application/pdf') {
+        cb(null, true);
+    } else {
+        const error = new Error('Only PDF documents (.pdf) are allowed!');
+        error.status = 400;
+        cb(error, false);
+    }
+};
+
 const upload = multer({ 
     storage,
+    fileFilter,
     limits: { 
-        fileSize: 10 * 1024 * 1024 // 10MB Universal File Size Limit
+        fileSize: 15 * 1024 * 1024 // 15MB PDF File Size Limit
     }
 });
 

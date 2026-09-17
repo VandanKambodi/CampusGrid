@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { 
     uploadResource, getResources, toggleResourceUpvote, deleteResource, downloadResource,
-    createJob, getJobs, deleteJob, updateJob, updateResource
+    createJob, getJobs, deleteJob, updateJob, updateResource,
+    searchAIResources, reindexResources, chatWithDocument
 } = require('../controllers/hubController');
 const { 
     requestAccountCreation, requestPasswordReset, 
@@ -17,6 +18,9 @@ router.route('/resources')
     .get(protect, getResources)
     .post(protect, upload.single('file'), uploadResource);
 
+router.post('/resources/search-ai', protect, searchAIResources);
+router.post('/resources/reindex', protect, admin, reindexResources);
+router.post('/resources/:id/chat', protect, chatWithDocument);
 router.get('/resources/download/:id', downloadResource);
 router.delete('/resources/:id', protect, deleteResource);
 router.put('/resources/:id', protect, admin, upload.single('file'), updateResource);

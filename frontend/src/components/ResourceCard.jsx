@@ -1,16 +1,24 @@
 import { useState } from 'react';
-import { FileText, ThumbsUp, ExternalLink, Pencil, Trash2, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { FileText, ThumbsUp, ExternalLink, Pencil, Trash2, X, Sparkles } from 'lucide-react';
 
 function ResourceCard({ resource, currentUserId, onUpvote, isAdmin, onEdit, onDelete }) {
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState({ title: resource.title, subject: resource.subject, semester: resource.semester, branch: resource.branch });
   const [isSaving, setIsSaving] = useState(false);
+  
+  const uploadedById = typeof resource.uploadedBy === 'object' ? resource.uploadedBy?._id : resource.uploadedBy;
+  const isOwner = uploadedById && String(uploadedById) === String(currentUserId);
+  const canManage = isAdmin || isOwner;
+
   const hasUpvoted = resource.upvotes?.includes(currentUserId);
   const updateField = (field, value) => setForm(currentForm => ({ ...currentForm, [field]: value }));
   const saveChanges = async () => {
     setIsSaving(true);
     try { await onEdit(resource._id, form); setIsEditing(false); } catch (error) { alert(error.response?.data?.message || 'Unable to edit this resource'); } finally { setIsSaving(false); }
   };
+
+  const downloadUrl = `${import.meta.env.VITE_API_URL}/api/hub/resources/download/${resource._id}`;
 
   return (
     <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-md p-5 shadow-sm hover:border-gray-300 dark:hover:border-white/20 transition-all flex flex-col justify-between h-full group">
@@ -28,9 +36,10 @@ function ResourceCard({ resource, currentUserId, onUpvote, isAdmin, onEdit, onDe
         </div>
       </div>
 
-      <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100 dark:border-white/5">
-        {isAdmin && isEditing && <div className="flex gap-1"><button onClick={() => setIsEditing(false)} title="Cancel" className="p-1.5 text-gray-400 hover:text-gray-700"><X className="w-4 h-4" /></button><button onClick={saveChanges} disabled={isSaving} className="px-2 py-1 bg-indigo-600 text-white text-xs rounded-sm">{isSaving ? 'Saving' : 'Save'}</button></div>}
-        {isAdmin && !isEditing && <div className="flex gap-1"><button onClick={() => setIsEditing(true)} title="Edit resource" className="p-1.5 text-gray-400 hover:text-indigo-500"><Pencil className="w-4 h-4" /></button><button onClick={() => onDelete(resource._id)} title="Delete resource" className="p-1.5 text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button></div>}
+      <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100 dark:border-white/5 flex-wrap gap-2">
+        {canManage && isEditing && <div className="flex gap-1"><button onClick={() => setIsEditing(false)} title="Cancel" className="p-1.5 text-gray-400 hover:text-gray-700"><X className="w-4 h-4" /></button><button onClick={saveChanges} disabled={isSaving} className="px-2 py-1 bg-indigo-600 text-white text-xs rounded-sm">{isSaving ? 'Saving' : 'Save'}</button></div>}
+        {canManage && !isEditing && <div className="flex gap-1"><button onClick={() => setIsEditing(true)} title="Edit resource" className="p-1.5 text-gray-400 hover:text-indigo-500"><Pencil className="w-4 h-4" /></button><button onClick={() => onDelete(resource._id)} title="Delete resource" className="p-1.5 text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button></div>}
+        
         <button 
           onClick={() => onUpvote(resource._id)} 
           className={`flex items-center gap-1.5 text-xs font-extrabold transition-colors px-3 py-1.5 rounded-sm border ${
@@ -43,15 +52,25 @@ function ResourceCard({ resource, currentUserId, onUpvote, isAdmin, onEdit, onDe
           <span>{resource.upvotes?.length || 0}</span>
         </button>
 
-        <a 
-          href={resource.fileUrl} 
-          target="_blank" 
-          rel="noreferrer" 
-          className="flex items-center gap-1.5 text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-sm transition-all shadow-sm hover:-translate-y-0.5"
-        >
-          <span>Read Document</span>
-          <ExternalLink className="w-3.5 h-3.5" />
-        </a>
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/hub/vault/chat/${resource._id}`}
+            className="flex items-center gap-1.5 text-xs font-black bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white px-3 py-1.5 rounded-sm transition-all shadow-sm hover:-translate-y-0.5 cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Ask AI</span>
+          </Link>
+
+          <a 
+            href={downloadUrl} 
+            target="_blank" 
+            rel="noreferrer" 
+            className="flex items-center gap-1.5 text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-sm transition-all shadow-sm hover:-translate-y-0.5"
+          >
+            <span>Read</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
       </div>
     </div>
   );

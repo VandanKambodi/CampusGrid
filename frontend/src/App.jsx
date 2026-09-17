@@ -19,6 +19,7 @@ import AdminContent from './pages/AdminContent';
 import Communities from './pages/Communities';
 import CommunityDetails from './pages/CommunityDetails';
 import AdminCommunities from './pages/AdminCommunities';
+import DocumentChat from './pages/DocumentChat';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -88,6 +89,7 @@ function App() {
               <Route path="student/:id" element={<PublicProfile />} />
               
               <Route path="vault" element={<Vault />} />
+              <Route path="vault/chat/:resourceId" element={<DocumentChat />} />
               <Route path="network" element={<CampusNetwork />} />
               <Route path="placements" element={<Placements />} />
               <Route path="chat" element={<StudentChatRoute />} />

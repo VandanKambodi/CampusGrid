@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { BookOpen, Upload, CheckCircle2, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import ResourceCard from '../components/ResourceCard';
+import ResourceAISearch from '../components/ResourceAISearch';
 import Loader from '../components/Loader';
 
 function Vault() {
@@ -35,9 +36,26 @@ function Vault() {
     }
   };
 
+  const handleFileSelect = (selectedFile) => {
+    if (!selectedFile) return;
+    const isPdf = selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf');
+    if (!isPdf) {
+      alert("Only PDF documents (.pdf) are allowed!");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    const maxSizeBytes = 15 * 1024 * 1024; // 15MB
+    if (selectedFile.size > maxSizeBytes) {
+      alert("File size exceeds maximum limit of 15MB!");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    setFile(selectedFile);
+  };
+
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!title || !subject || !file) return alert("Title, Subject, and File are required!");
+    if (!title || !subject || !file) return alert("Title, Subject, and PDF File are required!");
     setIsUploading(true);
     try {
       const token = localStorage.getItem('token');
@@ -51,9 +69,11 @@ function Vault() {
       await axios.post(`${import.meta.env.VITE_API_URL}/api/hub/resources`, formData, { 
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } 
       });
-      setTitle(''); setSubject(''); setFile(null); fetchResources(); 
-    } catch { 
-      alert("Error uploading file."); 
+      setTitle(''); setSubject(''); setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      fetchResources(); 
+    } catch (err) { 
+      alert(err.response?.data?.message || "Error uploading file."); 
     } finally { 
       setIsUploading(false); 
     }
@@ -109,6 +129,9 @@ function Vault() {
         </p>
       </div>
 
+      {/* AI Vector & Reference Search Bar */}
+      <ResourceAISearch currentSemester={semester} currentBranch={branch} />
+
       <form onSubmit={handleUpload} className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-md p-4 md:p-5 shadow-sm space-y-4">
         <h3 className="font-extrabold text-sm flex items-center gap-2 text-gray-900 dark:text-gray-100 uppercase tracking-wider">
           <Upload className="w-4 h-4 text-cyan-500" /> Contribute Academic Material
@@ -152,13 +175,13 @@ function Vault() {
 
         <div className="flex flex-col md:flex-row md:items-center justify-between border-t border-gray-100 dark:border-white/5 pt-4 mt-2 gap-3">
           <div className="flex items-center gap-3 w-full md:w-auto">
-            <input type="file" ref={fileInputRef} onChange={(e) => setFile(e.target.files[0])} accept=".pdf,.doc,.docx,.jpg,.png" className="hidden" />
+            <input type="file" ref={fileInputRef} onChange={(e) => handleFileSelect(e.target.files[0])} accept=".pdf,application/pdf" className="hidden" />
             <button 
               type="button" 
               onClick={() => fileInputRef.current.click()} 
-              className="whitespace-nowrap px-4 py-2 bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-200 dark:border-cyan-500/20 text-cyan-600 dark:text-cyan-400 font-extrabold text-xs rounded-sm cursor-pointer hover:bg-cyan-100 transition-colors"
+              className="whitespace-nowrap px-4 py-2 bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-200 dark:border-cyan-500/20 text-cyan-600 dark:text-cyan-400 font-extrabold text-xs rounded-sm cursor-pointer hover:bg-cyan-100 transition-colors flex items-center gap-1.5"
             >
-              Choose Document
+              Choose PDF Document
             </button>
             {file && (
               <span className="text-xs text-gray-600 dark:text-gray-300 font-semibold flex items-center gap-1.5 overflow-hidden text-ellipsis">
