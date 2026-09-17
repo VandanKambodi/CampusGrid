@@ -36,6 +36,7 @@ app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/hub', require('./routes/hubRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/events', require('./routes/eventRoutes'));
+app.use('/api/communities', require('./routes/communityRoutes'));
 app.use('/api', require('./routes/contentRoutes'));
 app.use('/api/admin', require('./routes/adminAnalyticsRoutes'));
 

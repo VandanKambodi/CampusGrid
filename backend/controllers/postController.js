@@ -1,4 +1,11 @@
 const Post = require('../models/Post');
+const CommunityMembership = require('../models/CommunityMembership');
+
+const canAccessCommunityPost = async (post, userId) => {
+    if (!post.community) return true;
+    const membership = await CommunityMembership.findOne({ community: post.community, user: userId });
+    return Boolean(membership);
+};
 
 const createPost = async (req, res) => {
     const { type, title, content, itemStatus } = req.body;
@@ -31,7 +38,7 @@ const createPost = async (req, res) => {
 const getPosts = async (req, res) => {
     const { type } = req.query; 
 
-    let query = {};
+    let query = { community: req.query.community || null };
     if (type) query.type = type;
 
     try {
@@ -50,6 +57,7 @@ const toggleLike = async (req, res) => {
     try {
         const post = await Post.findById(req.params.id);
         if (!post) return res.status(404).json({ message: 'Post not found' });
+        if (!await canAccessCommunityPost(post, req.user._id)) return res.status(403).json({ message: 'Join the community to interact with this discussion.' });
 
         const alreadyLiked = post.likes.includes(req.user._id);
 
@@ -74,6 +82,7 @@ const addComment = async (req, res) => {
     try {
         const post = await Post.findById(req.params.id);
         if (!post) return res.status(404).json({ message: 'Post not found' });
+        if (!await canAccessCommunityPost(post, req.user._id)) return res.status(403).json({ message: 'Join the community to interact with this discussion.' });
 
         const newComment = {
             user: req.user._id,
@@ -96,7 +105,6 @@ const deletePost = async (req, res) => {
 
         const isAuthor = post.author.toString() === req.user._id.toString();
         const isAdmin = req.user.role === 'admin' || req.user.isAdmin;
-
         if (!isAuthor && !isAdmin) {
             return res.status(403).json({ message: 'Not authorized to delete this post' });
         }
@@ -117,7 +125,6 @@ const updatePost = async (req, res) => {
 
         const isAuthor = post.author.toString() === req.user._id.toString();
         const isAdmin = req.user.role === 'admin' || req.user.isAdmin;
-
         if (!isAuthor && !isAdmin) {
             return res.status(403).json({ message: 'Not authorized to edit this post' });
         }

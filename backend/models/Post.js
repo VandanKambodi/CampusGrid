@@ -11,6 +11,7 @@ const postSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    community: { type: mongoose.Schema.Types.ObjectId, ref: 'Community', default: null, index: true },
     type: {
         type: String,
         enum: ['general', 'blog', 'announcement', 'lost-found'],

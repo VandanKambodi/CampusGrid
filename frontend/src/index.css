@@ -21,3 +21,12 @@
 .dark .content-select {
   color-scheme: dark;
 }
+
+.dark select {
+  color-scheme: dark;
+}
+
+.dark select option {
+  background-color: #1c1c1f;
+  color: #f9fafb;
+}

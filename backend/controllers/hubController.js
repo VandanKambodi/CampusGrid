@@ -282,5 +282,5 @@ const downloadResource = async (req, res) => {
 
 module.exports = { 
     uploadResource, getResources, toggleResourceUpvote, deleteResource, downloadResource,
-    createJob, getJobs, deleteJob, updateJob, updateResource 
+    createJob, getJobs, deleteJob, updateJob, updateResource, deleteCloudinaryFile
 };

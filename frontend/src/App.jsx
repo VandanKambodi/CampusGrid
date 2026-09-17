@@ -16,6 +16,9 @@ import Calendar from './pages/Calendar';
 import AdminEvents from './pages/AdminEvents';
 import PollsAndSurveys from './pages/PollsAndSurveys';
 import AdminContent from './pages/AdminContent';
+import Communities from './pages/Communities';
+import CommunityDetails from './pages/CommunityDetails';
+import AdminCommunities from './pages/AdminCommunities';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -90,10 +93,13 @@ function App() {
               <Route path="chat" element={<StudentChatRoute />} />
               <Route path="calendar" element={<Calendar />} />
               <Route path="polls" element={<StudentPollsRoute />} />
+              <Route path="communities" element={<Communities />} />
+              <Route path="communities/:communityId" element={<CommunityDetails />} />
 
               <Route path="admin" element={<AdminDashboard />} />
               <Route path="admin/events" element={<AdminEvents />} />
               <Route path="admin/content" element={<AdminContent />} />
+              <Route path="admin/communities" element={<AdminCommunities />} />
             </Route>
           </Routes>
         </Router>

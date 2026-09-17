@@ -24,6 +24,7 @@ const eventSchema = new mongoose.Schema({
     location: { type: String, default: '', trim: true },
     organizer: { type: String, default: '', trim: true },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    community: { type: mongoose.Schema.Types.ObjectId, ref: 'Community', default: null, index: true },
     image: { type: String, default: '' },
     registrationUrl: { type: String, default: '', trim: true },
     registrationRequired: { type: Boolean, default: false },
