@@ -53,6 +53,10 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    notificationPreferences: {
+        type: Object,
+        default: {}
+    },
     // --- FOLLOW SYSTEM ---
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],

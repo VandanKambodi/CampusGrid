@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, Home, Search as SearchIcon, BookOpen, Users, Briefcase, Bell, User as UserIcon, Sun, Moon, Menu, X, ShieldAlert, MessageCircle, CalendarDays, Vote, UsersRound } from 'lucide-react';
+import { LogOut, Home, Search as SearchIcon, BookOpen, Users, Briefcase, User as UserIcon, Sun, Moon, Menu, X, ShieldAlert, MessageCircle, CalendarDays, Vote, UsersRound } from 'lucide-react';
 import axios from 'axios';
+import NotificationBell from './notifications/NotificationBell';
 
 function DashboardLayout({ toggleTheme, theme }) {
   const [user, setUser] = useState(null);
@@ -132,10 +133,7 @@ function DashboardLayout({ toggleTheme, theme }) {
           </div>
 
           <div className="flex items-center gap-2 md:gap-3 shrink-0">
-            <button className="p-2 rounded-sm hover:bg-gray-100 dark:hover:bg-white/10 transition-colors relative text-gray-600 dark:text-gray-300">
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-black"></span>
-            </button>
+            <NotificationBell user={user} />
             <button onClick={toggleTheme} className="p-2 rounded-full cursor-pointer border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-all duration-300">
               {theme === 'light' ? <Moon className="w-4 h-4 text-gray-800" /> : <Sun className="w-4 h-4 text-yellow-400" />}
             </button>

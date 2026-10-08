@@ -20,6 +20,7 @@ import Communities from './pages/Communities';
 import CommunityDetails from './pages/CommunityDetails';
 import AdminCommunities from './pages/AdminCommunities';
 import DocumentChat from './pages/DocumentChat';
+import Notifications from './pages/Notifications';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -94,6 +95,7 @@ function App() {
               <Route path="placements" element={<Placements />} />
               <Route path="chat" element={<StudentChatRoute />} />
               <Route path="calendar" element={<Calendar />} />
+              <Route path="notifications" element={<Notifications />} />
               <Route path="polls" element={<StudentPollsRoute />} />
               <Route path="communities" element={<Communities />} />
               <Route path="communities/:communityId" element={<CommunityDetails />} />

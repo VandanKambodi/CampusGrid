@@ -1,5 +1,6 @@
 const Resource = require('../models/Resource');
 const Job = require('../models/Job');
+const { createNotification } = require('../services/notificationService');
 const { processPdfFile, scoreChunkRelevance } = require('../utils/pdfProcessor');
 
 const processAndStoreResourceChunks = async (resourceId, fileSource) => {
@@ -73,6 +74,19 @@ const toggleResourceUpvote = async (req, res) => {
             resource.upvotes = resource.upvotes.filter(id => id.toString() !== req.user._id.toString());
         } else {
             resource.upvotes.push(req.user._id);
+            if (resource.uploadedBy && resource.uploadedBy.toString() !== req.user._id.toString()) {
+                await createNotification({
+                    recipient: resource.uploadedBy,
+                    actor: req.user._id,
+                    type: 'RESOURCE_UPVOTE',
+                    title: 'Resource upvoted',
+                    message: `${req.user.name || 'Someone'} upvoted your resource.`,
+                    link: `/hub/resources`,
+                    entityType: 'resource',
+                    entityId: resource._id,
+                    metadata: { resourceTitle: resource.title }
+                });
+            }
         }
 
         await resource.save();

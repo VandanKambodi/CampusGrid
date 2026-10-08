@@ -4,6 +4,7 @@ const Resource = require('../models/Resource');
 const Job = require('../models/Job');
 const Request = require('../models/Request');
 const Event = require('../models/Event');
+const { createNotification } = require('../services/notificationService');
 
 const isSafeHttpUrl = (value) => {
     if (!value || typeof value !== 'string') return false;
@@ -189,6 +190,17 @@ const toggleFollowUser = async (req, res) => {
         } else {
             currentUser.following.push(targetUser._id);
             targetUser.followers.push(currentUser._id);
+            await createNotification({
+                recipient: targetUser._id,
+                actor: currentUser._id,
+                type: 'FOLLOW',
+                title: 'New follower',
+                message: `${currentUser.name || 'Someone'} started following you.`,
+                link: `/hub/profile/${currentUser._id}`,
+                entityType: 'user',
+                entityId: currentUser._id,
+                metadata: { followerName: currentUser.name }
+            });
         }
 
         await currentUser.save();

@@ -1,5 +1,6 @@
 const Request = require('../models/Request');
 const User = require('../models/User');
+const { createNotification, getDefaultPreferences } = require('../services/notificationService');
 
 // @desc    Request new student account creation
 // @route   POST /api/hub/requests/account
@@ -27,6 +28,19 @@ const requestAccountCreation = async (req, res) => {
             reason: reason || ''
         });
 
+        const adminUsers = await User.find({ role: 'admin' }).select('_id');
+        await Promise.all(adminUsers.map(adminUser => createNotification({
+            recipient: adminUser._id,
+            actor: null,
+            type: 'NEW_ACCOUNT_REQUEST',
+            title: 'New Account Request',
+            message: `New student account request requires review.`,
+            link: '/hub/admin',
+            entityType: 'account',
+            entityId: request._id,
+            metadata: { rollNo: request.rollNo, name: request.name }
+        })));
+
         res.status(201).json({ message: 'Account creation request submitted successfully', request });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -51,6 +65,19 @@ const requestPasswordReset = async (req, res) => {
             requestedPassword,
             reason: reason || ''
         });
+
+        const adminUsers = await User.find({ role: 'admin' }).select('_id');
+        await Promise.all(adminUsers.map(adminUser => createNotification({
+            recipient: adminUser._id,
+            actor: null,
+            type: 'SYSTEM_ALERT',
+            title: 'Password Reset Request',
+            message: `A password reset request has been submitted for ${request.rollNo}.`,
+            link: '/hub/admin',
+            entityType: 'request',
+            entityId: request._id,
+            metadata: { rollNo: request.rollNo }
+        })));
 
         res.status(201).json({ message: 'Password reset request submitted successfully', request });
     } catch (error) {
@@ -90,13 +117,25 @@ const processRequest = async (req, res) => {
             if (request.type === 'account_creation') {
                 const userExists = await User.findOne({ rollNo: request.rollNo });
                 if (!userExists) {
-                    await User.create({
+                    const createdUser = await User.create({
                         role: 'student',
                         rollNo: request.rollNo,
                         name: request.name,
                         course: request.course,
                         branch: request.branch,
-                        password: request.requestedPassword
+                        password: request.requestedPassword,
+                        notificationPreferences: getDefaultPreferences('student')
+                    });
+                    await createNotification({
+                        recipient: createdUser._id,
+                        actor: req.user._id,
+                        type: 'ACCOUNT_APPROVED',
+                        title: 'Account Approved',
+                        message: 'Your CampusGrid account has been approved.',
+                        link: '/hub/feed',
+                        entityType: 'account',
+                        entityId: createdUser._id,
+                        metadata: { approvalType: 'account_creation' }
                     });
                 }
             } else if (request.type === 'password_reset') {
@@ -139,7 +178,20 @@ const directCreateStudent = async (req, res) => {
             name,
             password,
             course: course || '',
-            branch: branch || ''
+            branch: branch || '',
+            notificationPreferences: getDefaultPreferences('student')
+        });
+
+        await createNotification({
+            recipient: user._id,
+            actor: req.user._id,
+            type: 'ACCOUNT_APPROVED',
+            title: 'Account Created',
+            message: 'Your CampusGrid account has been created successfully.',
+            link: '/hub/feed',
+            entityType: 'account',
+            entityId: user._id,
+            metadata: { createdByAdmin: true }
         });
 
         res.status(201).json(user);
@@ -166,6 +218,18 @@ const directChangePassword = async (req, res) => {
 
         user.password = newPassword;
         await user.save();
+
+        await createNotification({
+            recipient: user._id,
+            actor: req.user._id,
+            type: 'ACCOUNT_APPROVED',
+            title: 'Password Updated',
+            message: 'Your password has been updated by an administrator.',
+            link: '/hub/profile',
+            entityType: 'account',
+            entityId: user._id,
+            metadata: { updatedByAdmin: true }
+        });
 
         res.json({ message: 'Password updated successfully' });
     } catch (error) {

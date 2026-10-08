@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
+const { getDefaultPreferences } = require('../services/notificationService');
 
 const setupInitialAdmin = async (req, res) => {
     const adminExists = await User.findOne({ role: 'admin' });
@@ -14,7 +15,8 @@ const setupInitialAdmin = async (req, res) => {
         role: 'admin',
         rollNo,
         name,
-        password
+        password,
+        notificationPreferences: getDefaultPreferences('admin')
     });
 
     if (admin) {
@@ -63,7 +65,8 @@ const registerStudent = async (req, res) => {
         name,
         password,
         course,
-        branch
+        branch,
+        notificationPreferences: getDefaultPreferences('student')
     });
 
     if (user) {

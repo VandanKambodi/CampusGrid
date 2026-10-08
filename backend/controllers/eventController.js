@@ -1,4 +1,6 @@
 const Event = require('../models/Event');
+const User = require('../models/User');
+const { createNotification } = require('../services/notificationService');
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -89,7 +91,22 @@ const createEvent = async (req, res) => {
         if (!['Draft', 'Published', 'Cancelled'].includes(payload.status)) return res.status(400).json({ message: 'Invalid event status.' });
 
         const event = await Event.create({ ...payload, createdBy: req.user._id, image: req.file?.path || '' });
-        res.status(201).json(await event.populate('createdBy', 'name role'));
+        const populatedEvent = await event.populate('createdBy', 'name role');
+        if (payload.status === 'Published') {
+            const students = await User.find({ role: 'student' }).select('_id');
+            await Promise.all(students.map(student => createNotification({
+                recipient: student._id,
+                actor: req.user._id,
+                type: 'EVENT_PUBLISHED',
+                title: 'New campus event',
+                message: `${event.title} is now live on CampusGrid.`,
+                link: '/hub/calendar',
+                entityType: 'event',
+                entityId: event._id,
+                metadata: { eventDate: event.date }
+            })));
+        }
+        res.status(201).json(populatedEvent);
     } catch (error) {
         res.status(400).json({ message: error.message || 'Failed to create event.' });
     }
@@ -109,6 +126,22 @@ const updateEvent = async (req, res) => {
         Object.assign(event, payload);
         if (req.file) event.image = req.file.path;
         await event.save();
+
+        if (payload.status === 'Published' && event.wasModified('status')) {
+            const students = await User.find({ role: 'student' }).select('_id');
+            await Promise.all(students.map(student => createNotification({
+                recipient: student._id,
+                actor: req.user._id,
+                type: 'EVENT_PUBLISHED',
+                title: 'New campus event',
+                message: `${event.title} is now live on CampusGrid.`,
+                link: '/hub/calendar',
+                entityType: 'event',
+                entityId: event._id,
+                metadata: { eventDate: event.date }
+            })));
+        }
+
         res.json(await event.populate('createdBy', 'name role'));
     } catch (error) {
         res.status(400).json({ message: error.message || 'Failed to update event.' });

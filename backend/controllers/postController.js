@@ -1,5 +1,6 @@
 const Post = require('../models/Post');
 const CommunityMembership = require('../models/CommunityMembership');
+const { createNotification } = require('../services/notificationService');
 
 const canAccessCommunityPost = async (post, userId) => {
     if (!post.community) return true;
@@ -28,6 +29,21 @@ const createPost = async (req, res) => {
             images: imagePaths,
             itemStatus: type === 'lost-found' ? (itemStatus || 'lost') : null
         });
+
+        if (type === 'announcement') {
+            const students = await req.user?.role === 'admin' ? (await require('../models/User').find({ role: 'student' }).select('_id')) : [];
+            await Promise.all(students.map(student => createNotification({
+                recipient: student._id,
+                actor: req.user._id,
+                type: 'ANNOUNCEMENT',
+                title: 'Campus Announcement',
+                message: title || 'A new announcement has been published.',
+                link: '/hub/feed',
+                entityType: 'post',
+                entityId: post._id,
+                metadata: { postType: 'announcement' }
+            })));
+        }
 
         res.status(201).json(post);
     } catch (error) {
@@ -65,6 +81,19 @@ const toggleLike = async (req, res) => {
             post.likes = post.likes.filter(id => id.toString() !== req.user._id.toString());
         } else {
             post.likes.push(req.user._id);
+            if (post.author && post.author.toString() !== req.user._id.toString()) {
+                await createNotification({
+                    recipient: post.author,
+                    actor: req.user._id,
+                    type: 'POST_LIKE',
+                    title: 'Post liked',
+                    message: `${req.user.name || 'Someone'} liked your post.`,
+                    link: `/hub/feed?post=${post._id}`,
+                    entityType: 'post',
+                    entityId: post._id,
+                    metadata: { postTitle: post.title }
+                });
+            }
         }
 
         await post.save();
@@ -91,6 +120,20 @@ const addComment = async (req, res) => {
 
         post.comments.push(newComment);
         await post.save();
+
+        if (post.author && post.author.toString() !== req.user._id.toString()) {
+            await createNotification({
+                recipient: post.author,
+                actor: req.user._id,
+                type: 'POST_COMMENT',
+                title: 'New comment',
+                message: `${req.user.name || 'Someone'} commented on your post.`,
+                link: `/hub/feed?post=${post._id}`,
+                entityType: 'post',
+                entityId: post._id,
+                metadata: { commentText: text }
+            });
+        }
 
         res.status(201).json(post.comments);
     } catch (error) {
