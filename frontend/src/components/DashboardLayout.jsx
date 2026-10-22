@@ -3,6 +3,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { LogOut, Home, Search as SearchIcon, BookOpen, Users, Briefcase, User as UserIcon, Sun, Moon, Menu, X, ShieldAlert, MessageCircle, CalendarDays, Vote, UsersRound } from 'lucide-react';
 import axios from 'axios';
 import NotificationBell from './notifications/NotificationBell';
+import PlatformAssistant from './PlatformAssistant';
 
 function DashboardLayout({ toggleTheme, theme }) {
   const [user, setUser] = useState(null);
@@ -227,6 +228,9 @@ function DashboardLayout({ toggleTheme, theme }) {
         </main>
 
       </div>
+
+      {/* Floating Platform Onboarding & Help Assistant */}
+      <PlatformAssistant />
     </div>
   );
 }

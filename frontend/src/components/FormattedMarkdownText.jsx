@@ -1,14 +1,43 @@
+import { Link } from 'react-router-dom';
+
 function renderFormattedInline(str) {
   if (!str) return null;
-  // Regex to match **bold** and http(s):// links
-  const parts = str.split(/(\*\*[^*]+\*\*|https?:\/\/[^\s]+)/g);
+  // Regex to match **bold**, [link text](url), and http(s):// links
+  const parts = str.split(/(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\)|https?:\/\/[^\s]+)/g);
 
   return parts.map((part, i) => {
+    if (!part) return null;
     if (part.startsWith('**') && part.endsWith('**')) {
       return (
         <strong key={i} className="font-extrabold text-gray-900 dark:text-white px-0.5">
           {part.slice(2, -2)}
         </strong>
+      );
+    }
+    if (part.startsWith('[') && part.includes('](') && part.endsWith(')')) {
+      const label = part.slice(1, part.indexOf(']('));
+      const targetUrl = part.slice(part.indexOf('](') + 2, -1);
+      if (targetUrl.startsWith('/')) {
+        return (
+          <Link
+            key={i}
+            to={targetUrl}
+            className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+          >
+            {label} ↗
+          </Link>
+        );
+      }
+      return (
+        <a
+          key={i}
+          href={targetUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="text-cyan-500 underline font-semibold hover:text-cyan-400 break-all"
+        >
+          {label}
+        </a>
       );
     }
     if (part.startsWith('http://') || part.startsWith('https://')) {
