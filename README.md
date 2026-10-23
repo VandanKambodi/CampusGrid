@@ -117,6 +117,31 @@ npm run dev
 
 ---
 
+## ☁️ Deployment
+
+CampusGrid uses a persistent Socket.IO server for real-time chat, so deploy the frontend to Vercel and the backend to a persistent Node.js host such as Render.
+
+### 1. Deploy the backend to Render
+
+1. Create a new Render Blueprint from this repository using the root `render.yaml` (or create a Web Service with the repository root directory set to `backend`).
+2. Add the required environment variables in Render:
+   - `MONGO_URI`: MongoDB Atlas connection string. Allow connections from Render in your Atlas network access settings.
+   - `JWT_SECRET`: a strong, private signing secret.
+   - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: Cloudinary credentials. Cloudinary is needed for uploads because Render's local filesystem is not persistent.
+   - `GEMINI_API_KEY`: optional; the assistant has a local fallback when this is omitted.
+3. Deploy the service and copy its public URL, for example `https://campusgrid-api.onrender.com`.
+
+### 2. Deploy the frontend to Vercel
+
+1. Import this repository into Vercel and set **Root Directory** to `frontend`.
+2. The repository's `frontend/.env.production` sets `VITE_API_URL` to the deployed Render backend. If you set the variable in Vercel, use the same backend URL without a trailing slash: `https://campusgrid-api-l12s.onrender.com`.
+3. Deploy with the Vite defaults: build command `npm run build`, output directory `dist`.
+4. Redeploy the frontend after changing `VITE_API_URL`; Vite embeds this value at build time.
+
+The Vercel rewrite in `frontend/vercel.json` makes direct navigation and page refreshes work for React Router routes. The backend must stay on a host that supports persistent WebSocket connections; deploying the current backend as a Vercel Function will not support its Socket.IO chat.
+
+---
+
 ## 🔑 Default Credentials
 
 | User Type | Roll Number | Password | Capabilities |
